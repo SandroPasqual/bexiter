@@ -31,6 +31,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local private docs (NEVER PUSH TO GITHUB)
+docs-local/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
