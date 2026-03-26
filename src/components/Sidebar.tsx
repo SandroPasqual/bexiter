@@ -122,8 +122,8 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Header */}
       <div className="p-4 border-b border-[var(--border-color)]">
         <div className="flex items-center justify-between mb-4">
-          <Link href="/app" className="text-xl font-bold text-gray-900 dark:text-white">
-            Bexiter
+          <Link href="/app" className="text-lg font-semibold text-[var(--sidebar-text)]">
+            {user?.email?.split('@')[0] || 'My Notes'}
           </Link>
           <div className="flex items-center gap-1">
             <button
@@ -145,13 +145,13 @@ export function Sidebar({ className }: SidebarProps) {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
           <input
             type="text"
             placeholder="Search notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-white"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent text-[var(--foreground)]"
           />
         </div>
       </div>
