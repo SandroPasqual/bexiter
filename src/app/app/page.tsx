@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { FileText, FolderOpen, Tag, Plus } from 'lucide-react'
-import type { NoteWithTags, Folder as FolderType } from '@/types'
+import type { NoteWithTags } from '@/types'
 
 export default function AppPage() {
   const { user } = useAuth()
@@ -20,6 +20,7 @@ export default function AppPage() {
     if (user) {
       loadDashboardData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const loadDashboardData = async () => {

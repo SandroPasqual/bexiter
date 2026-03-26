@@ -7,15 +7,15 @@ import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
-  Save, Eye, Split, Bold, Italic, List, ListOrdered,
+  Eye, Split, Bold, Italic, List, ListOrdered,
   Code, Link2, Quote, Heading1, Heading2, Heading3,
-  ArrowLeft, MoreHorizontal, Trash2, Archive, Download,
+  ArrowLeft, Trash2, Archive, Download,
   Tag, Folder
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
-import type { Note, Folder as FolderType, Tag as TagType, NoteWithTags } from '@/types'
+import type { Note, Folder as FolderType, Tag as TagType } from '@/types'
 
 type EditorMode = 'edit' | 'preview' | 'split'
 
@@ -51,6 +51,7 @@ export function NoteEditor() {
         loadNote()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, noteId])
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function NoteEditor() {
       setTitle(note.title)
       setContent(note.content)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note])
 
   const loadNote = async () => {
@@ -214,8 +216,6 @@ export function NoteEditor() {
     
     router.push('/app')
   }
-
-  const currentFolder = folders.find(f => f.id === note?.folder_id)
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
@@ -376,7 +376,7 @@ export function NoteEditor() {
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                code({ node, className, children, ...props }) {
+                code({ className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className || '')
                   const isInline = !match
                   return !isInline && match ? (
@@ -393,9 +393,9 @@ export function NoteEditor() {
                     </code>
                   )
                 },
-                a({ node, href, children, ...props }) {
+                a({ href, children, ...props }) {
                   const isWikiLink = href?.startsWith('[[') && href?.endsWith(']]')
-                  if (isWikiLink) {
+                  if (isWikiLink && href) {
                     const noteTitle = href.slice(2, -2)
                     return (
                       <span
@@ -428,7 +428,6 @@ export function NoteEditor() {
               onClick={async () => {
                 if (note) {
                   await supabase.from('notes').update({ folder_id: null }).eq('id', note.id)
-                  router.reload()
                 }
                 setShowFolderPicker(false)
               }}
@@ -442,7 +441,6 @@ export function NoteEditor() {
                 onClick={async () => {
                   if (note) {
                     await supabase.from('notes').update({ folder_id: folder.id }).eq('id', note.id)
-                    router.reload()
                   }
                   setShowFolderPicker(false)
                 }}

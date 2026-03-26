@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { Archive, RotateCcw, Trash2 } from 'lucide-react'
@@ -9,7 +8,6 @@ import type { NoteWithTags } from '@/types'
 
 export default function ArchivePage() {
   const { user } = useAuth()
-  const router = useRouter()
   const supabase = createSupabaseBrowserClient()
   
   const [archivedNotes, setArchivedNotes] = useState<NoteWithTags[]>([])
@@ -18,6 +16,7 @@ export default function ArchivePage() {
     if (user) {
       loadArchivedNotes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const loadArchivedNotes = async () => {

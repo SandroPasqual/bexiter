@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { 
-  Plus, Folder, FolderOpen, FileText, Search, 
-  Settings, Sun, Moon, LogOut, Tag, Archive,
-  ChevronRight, ChevronDown, MoreHorizontal,
-  Trash2, Edit, FolderPlus
+  Plus, Folder, FileText, Search, 
+  Sun, Moon, LogOut, Tag, Archive,
+  ChevronRight, ChevronDown, FolderPlus
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -25,7 +24,6 @@ export function Sidebar({ className }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<NoteWithTags[]>([])
-  const [isSearching, setIsSearching] = useState(false)
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   
@@ -40,6 +38,7 @@ export function Sidebar({ className }: SidebarProps) {
       loadFolders()
       loadNotes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   useEffect(() => {
@@ -47,8 +46,8 @@ export function Sidebar({ className }: SidebarProps) {
       searchNotes()
     } else {
       setSearchResults([])
-      setIsSearching(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   const loadFolders = async () => {
@@ -70,7 +69,6 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   const searchNotes = async () => {
-    setIsSearching(true)
     const { data } = await supabase
       .from('notes')
       .select('*, tags(*), folder:folders(*)')

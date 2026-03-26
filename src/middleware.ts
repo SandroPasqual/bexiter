@@ -43,7 +43,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup')
-  const isAuthCallback = pathname.startsWith('/auth/callback')
   const isAppPage = pathname.startsWith('/app')
 
   if (!user && isAppPage) {

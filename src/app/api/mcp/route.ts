@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+let supabaseInstance: SupabaseClient | null = null
+
+function getSupabase(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+  }
+  
+  supabaseInstance = createClient(supabaseUrl, supabaseKey)
+  return supabaseInstance
+}
 
 interface MCPRequest {
   jsonrpc: string
@@ -17,6 +29,7 @@ interface MCPRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase()
     const body: MCPRequest = await request.json()
     
     if (body.method === 'initialize') {
@@ -215,7 +228,6 @@ export async function POST(request: NextRequest) {
           const updates: Record<string, unknown> = {}
           if (title) updates.title = title
           if (content !== undefined) updates.content = content
-          updates.updated_at = new Date().toISOString()
           
           const { data: note, error } = await supabase
             .from('notes')
