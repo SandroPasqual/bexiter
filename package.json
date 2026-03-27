@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db": "export $(cat .env.local | xargs) && npx ts-node scripts/supabase-admin.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
