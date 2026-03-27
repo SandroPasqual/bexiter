@@ -10,11 +10,12 @@ import {
   Eye, Split, Bold, Italic, List, ListOrdered,
   Code, Link2, Quote, Heading1, Heading2, Heading3,
   ArrowLeft, Trash2, Archive, Download,
-  Tag, Folder
+  Tag, Folder, Share2
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
+import { ShareDialog } from '@/components/ShareDialog'
 import type { Note, Folder as FolderType, Tag as TagType } from '@/types'
 
 type EditorMode = 'edit' | 'preview' | 'split'
@@ -39,6 +40,7 @@ export function NoteEditor() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
+  const [showShareDialog, setShowShareDialog] = useState(false)
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -297,6 +299,16 @@ export function NoteEditor() {
           >
             <Download size={18} className="text-gray-600 dark:text-gray-400" />
           </button>
+
+          {!isNewNote && (
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+              title="Share"
+            >
+              <Share2 size={18} className="text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
           
           <button
             onClick={archiveNote}
@@ -498,6 +510,18 @@ export function NoteEditor() {
           </div>
         </div>
       )}
+
+      {/* Share Dialog */}
+      {showShareDialog && note && user && (
+        <ShareDialog
+          noteId={note.id}
+          ownerId={user.id}
+          currentUserEmail={user.email || ''}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   )
 }
+
+export default NoteEditor

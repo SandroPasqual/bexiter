@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { 
   Plus, Folder, FileText, Search, 
   Sun, Moon, LogOut, Tag, Archive,
-  ChevronRight, ChevronDown, FolderPlus
+  ChevronRight, ChevronDown, FolderPlus, Shield, Share2
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -21,6 +21,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const [folders, setFolders] = useState<FolderType[]>([])
   const [notes, setNotes] = useState<NoteWithTags[]>([])
+  const [sharedNotes, setSharedNotes] = useState<NoteWithTags[]>([])
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<NoteWithTags[]>([])
@@ -37,6 +38,7 @@ export function Sidebar({ className }: SidebarProps) {
     if (user) {
       loadFolders()
       loadNotes()
+      loadSharedNotes()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
@@ -66,6 +68,25 @@ export function Sidebar({ className }: SidebarProps) {
       .order('updated_at', { ascending: false })
       .limit(50)
     if (data) setNotes(data as NoteWithTags[])
+  }
+
+  const loadSharedNotes = async () => {
+    const { data: collabs } = await supabase
+      .from('note_collaborators')
+      .select('note_id')
+      .eq('user_id', user?.id)
+
+    if (!collabs || collabs.length === 0) return
+
+    const noteIds = collabs.map(c => c.note_id)
+    const { data } = await supabase
+      .from('notes')
+      .select('*, tags(*), folder:folders(*)')
+      .in('id', noteIds)
+      .eq('is_archived', false)
+      .order('updated_at', { ascending: false })
+
+    if (data) setSharedNotes(data as NoteWithTags[])
   }
 
   const searchNotes = async () => {
@@ -285,20 +306,32 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         {/* Tags */}
-        <div className="mb-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
-            Tags
-          </div>
-          <Link
-            href="/app/tags"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-[var(--hover-bg)] rounded-md"
-          >
-            <Tag size={14} />
-            <span>Manage Tags</span>
-          </Link>
-        </div>
 
-        {/* Archive */}
+        {/* Shared Notes */}
+        {sharedNotes.length > 0 && (
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2 flex items-center gap-2">
+              <Share2 size={12} />
+              Shared with me
+            </div>
+            {sharedNotes.map(note => (
+              <Link
+                key={note.id}
+                href={`/app/note/${note.id}`}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
+                  pathname === `/app/note/${note.id}`
+                    ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                    : "text-gray-600 dark:text-gray-400"
+                )}
+              >
+                <FileText size={14} />
+                <span className="truncate">{note.title || 'Untitled'}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="mb-4">
           <Link
             href="/app/archive"
@@ -308,16 +341,27 @@ export function Sidebar({ className }: SidebarProps) {
             <span>Archive</span>
           </Link>
         </div>
+
+        {/* Admin */}
+        <div className="mb-4">
+          <Link
+            href="/app/admin"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-[var(--hover-bg)] rounded-md"
+          >
+            <Shield size={14} />
+            <span>Admin</span>
+          </Link>
+        </div>
       </nav>
 
       {/* User Info */}
       <div className="p-3 border-t border-[var(--border-color)]">
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <Link href="/app/profile" className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--hover-bg)] rounded-md p-1 -m-1">
           <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium">
             {user?.email?.[0]?.toUpperCase()}
           </div>
           <span className="truncate flex-1">{user?.email}</span>
-        </div>
+        </Link>
       </div>
     </div>
   )

@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react'
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { signIn } = useAuth()
   const router = useRouter()
 
@@ -32,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-[var(--foreground)]">Bexiter</h1>
+          <h1 className="text-4xl font-bold tracking-[0.3em] text-[var(--foreground)]">BEXITER</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Your personal knowledge companion
           </p>
@@ -68,14 +69,21 @@ export default function LoginPage() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 pl-10 py-3 border border-[var(--border-color)] placeholder-[var(--placeholder)] text-[var(--foreground)] bg-[var(--input-bg)] rounded-b-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:z-10 sm:text-sm"
+                  className="appearance-none rounded-none relative block w-full px-3 pl-10 pr-10 py-3 border border-[var(--border-color)] placeholder-[var(--placeholder)] text-[var(--foreground)] bg-[var(--input-bg)] rounded-b-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:z-10 sm:text-sm"
                   placeholder="Password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
           </div>
@@ -101,11 +109,18 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center text-sm">
-            <span className="text-[var(--muted)]">Don&apos;t have an account? </span>
-            <a href="/signup" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
-              Sign up
-            </a>
+          <div className="text-center text-sm space-y-2">
+            <div>
+              <a href="/forgot-password" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+                Forgot your password?
+              </a>
+            </div>
+            <div>
+              <span className="text-[var(--muted)]">Don&apos;t have an account? </span>
+              <a href="/signup" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+                Sign up
+              </a>
+            </div>
           </div>
         </form>
       </div>

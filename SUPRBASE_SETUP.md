@@ -124,3 +124,77 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- =============================================
+-- V2: Note Collaboration
+-- Run this section if upgrading from v1
+-- =============================================
+
+-- 11. Note Collaborators Table
+CREATE TABLE public.note_collaborators (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  note_id UUID NOT NULL REFERENCES public.notes(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'view' CHECK (role IN ('view', 'edit')),
+  invited_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(note_id, email)
+);
+
+CREATE INDEX idx_note_collaborators_note_id ON public.note_collaborators(note_id);
+CREATE INDEX idx_note_collaborators_user_id ON public.note_collaborators(user_id);
+CREATE INDEX idx_note_collaborators_email ON public.note_collaborators(email);
+
+-- 12. Enable RLS on note_collaborators
+ALTER TABLE public.note_collaborators ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Note owners can manage collaborators" ON public.note_collaborators
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.notes WHERE id = note_collaborators.note_id AND user_id = auth.uid())
+  );
+
+CREATE POLICY "Collaborators can view their invitations" ON public.note_collaborators
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 13. Update Notes RLS to include collaborators
+-- Drop existing policies
+DROP POLICY IF EXISTS "Users can manage own notes" ON public.notes;
+
+-- Users can still manage their own notes
+CREATE POLICY "Users can manage own notes" ON public.notes
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Collaborators can view notes shared with them (view role)
+CREATE POLICY "Collaborators can view shared notes" ON public.notes
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.note_collaborators
+      WHERE note_id = notes.id AND user_id = auth.uid()
+    )
+  );
+
+-- Collaborators with edit role can update notes
+CREATE POLICY "Collaborators can edit shared notes" ON public.notes
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.note_collaborators
+      WHERE note_id = notes.id AND user_id = auth.uid() AND role = 'edit'
+    )
+  );
+
+-- 14. Update Note Tags RLS for collaborators
+DROP POLICY IF EXISTS "Users can manage own note_tags" ON public.note_tags;
+
+CREATE POLICY "Users can manage own note_tags" ON public.note_tags
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.notes WHERE id = note_tags.note_id AND user_id = auth.uid())
+  );
+
+CREATE POLICY "Collaborators can view note_tags" ON public.note_tags
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.note_collaborators
+      WHERE note_id = note_tags.note_id AND user_id = auth.uid()
+    )
+  );

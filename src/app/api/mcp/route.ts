@@ -1,20 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-let supabaseInstance: SupabaseClient | null = null
-
-function getSupabase(): SupabaseClient {
-  if (supabaseInstance) return supabaseInstance
-  
+function getSupabaseWithToken(accessToken: string): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+    throw new Error('Supabase configuration missing.')
   }
   
-  supabaseInstance = createClient(supabaseUrl, supabaseKey)
-  return supabaseInstance
+  return createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  })
+}
+
+function getAuthenticatedToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) return null
+  return authHeader.slice(7)
+}
+
+function unauthorizedResponse(id: number | null) {
+  return NextResponse.json({
+    jsonrpc: '2.0',
+    id,
+    error: {
+      code: -32001,
+      message: 'Unauthorized. Provide a valid Bearer token in the Authorization header.'
+    }
+  }, { status: 401 })
 }
 
 interface MCPRequest {
@@ -29,7 +47,18 @@ interface MCPRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabase()
+    const accessToken = getAuthenticatedToken(request)
+    if (!accessToken) {
+      return unauthorizedResponse(null)
+    }
+
+    const supabase = getSupabaseWithToken(accessToken)
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return unauthorizedResponse(null)
+    }
+
     const body: MCPRequest = await request.json()
     
     if (body.method === 'initialize') {
