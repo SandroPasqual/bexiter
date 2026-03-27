@@ -295,6 +295,13 @@ export function Sidebar({ className }: SidebarProps) {
                         <span className="truncate">{note.title}</span>
                       </Link>
                     ))}
+                  <button
+                    onClick={() => router.push(`/app/note/new?folder_id=${folder.id}`)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--muted)] hover:bg-[var(--hover-bg)] rounded-md w-full"
+                  >
+                    <Plus size={14} />
+                    <span>New note in {folder.name}</span>
+                  </button>
                 </div>
               )}
             </div>

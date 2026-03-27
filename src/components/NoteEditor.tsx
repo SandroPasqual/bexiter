@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Trash2, Archive, Download,
   Tag, Folder, Share2, Columns2, Minus, AlignLeft
@@ -17,12 +17,14 @@ type TemplateMode = 'compact' | 'medium' | 'reader'
 
 export function NoteEditor() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
   const supabase = createSupabaseBrowserClient()
 
   const noteId = params.id as string
   const isNewNote = noteId === 'new'
+  const initialFolderId = searchParams.get('folder_id') || null
 
   const [note, setNote] = useState<Note | null>(null)
   const [folders, setFolders] = useState<FolderType[]>([])
@@ -118,7 +120,8 @@ export function NoteEditor() {
         .from('notes')
         .insert({
           ...noteData,
-          user_id: user.id
+          user_id: user.id,
+          folder_id: initialFolderId
         })
         .select()
         .single()
