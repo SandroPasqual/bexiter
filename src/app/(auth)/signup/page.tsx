@@ -1,17 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react'
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { signUp } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,40 +37,16 @@ export default function SignupPage() {
       setError(error.message || 'Failed to create account')
       setLoading(false)
     } else {
-      setSuccess(true)
-      setLoading(false)
+      router.push('/login')
     }
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-        <div className="max-w-md w-full space-y-8 text-center">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Check your email
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            We sent a confirmation link to <strong>{email}</strong>. 
-            Click the link to activate your account.
-          </p>
-          <a
-            href="/login"
-            className="inline-block text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
-          >
-            Back to login
-          </a>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Bexiter</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-4xl font-bold tracking-[0.3em] text-[var(--foreground)]">BEXITER</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Create your account
           </p>
         </div>
@@ -89,7 +67,7 @@ export default function SignupPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 pl-10 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  className="appearance-none rounded-none relative block w-full px-3 pl-10 py-3 border border-[var(--border-color)] placeholder-[var(--placeholder)] text-[var(--foreground)] bg-[var(--input-bg)] rounded-t-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:z-10 sm:text-sm"
                   placeholder="Email address"
                 />
               </div>
@@ -103,14 +81,21 @@ export default function SignupPage() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 pl-10 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white dark:bg-gray-800 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  className="appearance-none rounded-none relative block w-full px-3 pl-10 pr-10 py-3 border border-[var(--border-color)] placeholder-[var(--placeholder)] text-[var(--foreground)] bg-[var(--input-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:z-10 sm:text-sm"
                   placeholder="Password (min 6 characters)"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
             <div>
@@ -122,12 +107,12 @@ export default function SignupPage() {
                 <input
                   id="confirm-password"
                   name="confirm-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 pl-10 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 text-gray-900 dark:text-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  className="appearance-none rounded-none relative block w-full px-3 pl-10 pr-10 py-3 border border-[var(--border-color)] placeholder-[var(--placeholder)] text-[var(--foreground)] bg-[var(--input-bg)] rounded-b-md focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent focus:z-10 sm:text-sm"
                   placeholder="Confirm password"
                 />
               </div>
@@ -135,7 +120,7 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+            <div className="flex items-center gap-2 text-[var(--danger)] text-sm">
               <AlertCircle className="h-4 w-4" />
               {error}
             </div>
@@ -145,7 +130,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[var(--accent)] hover:bg-[var(--accent-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -156,8 +141,8 @@ export default function SignupPage() {
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Already have an account? </span>
-            <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+            <span className="text-[var(--muted)]">Already have an account? </span>
+            <a href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
               Sign in
             </a>
           </div>
