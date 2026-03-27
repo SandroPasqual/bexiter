@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { 
-  Plus, Folder, FileText, Search, 
+import {
+  Plus, Folder, FileText, Search,
   Sun, Moon, LogOut, Tag, Archive,
-  ChevronRight, ChevronDown, FolderPlus, Shield, Share2
+  ChevronRight, ChevronDown, FolderPlus, Shield, Share2,
+  Trash2, X
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -27,7 +28,8 @@ export function Sidebar({ className }: SidebarProps) {
   const [searchResults, setSearchResults] = useState<NoteWithTags[]>([])
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  
+  const [deletingFolder, setDeletingFolder] = useState<string | null>(null)
+
   const { user, signOut } = useAuth()
   const { resolvedTheme, toggleTheme } = useTheme()
   const router = useRouter()
@@ -114,7 +116,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const createFolder = async () => {
     if (!newFolderName.trim() || !user) return
-    
+
     const { data, error } = await supabase
       .from('folders')
       .insert({
@@ -123,12 +125,23 @@ export function Sidebar({ className }: SidebarProps) {
       })
       .select()
       .single()
-    
+
     if (!error && data) {
       setFolders(prev => [...prev, data])
       setNewFolderName('')
       setShowNewFolder(false)
     }
+  }
+
+  const deleteFolder = async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId)
+    if (!folder) return
+    if (!confirm(`Delete folder "${folder.name}"? Notes inside will be moved out.`)) return
+
+    setDeletingFolder(folderId)
+    await supabase.from('folders').delete().eq('id', folderId)
+    setFolders(prev => prev.filter(f => f.id !== folderId))
+    setDeletingFolder(null)
   }
 
   const handleSignOut = async () => {
@@ -143,20 +156,20 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Header */}
       <div className="p-4 border-b border-[var(--border-color)]">
         <div className="flex items-center justify-between mb-4">
-          <Link href="/app" className="text-lg font-semibold text-[var(--sidebar-text)]">
-            {user?.email?.split('@')[0] || 'My Notes'}
+          <Link href="/app" className="text-lg font-semibold text-[var(--foreground)]">
+            BEXITER
           </Link>
           <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded hover:bg-[var(--hover-bg)] text-gray-600 dark:text-gray-400"
+              className="p-2 rounded hover:bg-[var(--hover-bg)] text-[var(--muted)]"
               title={resolvedTheme === 'dark' ? 'Switch to light' : 'Switch to dark'}
             >
               {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <button
               onClick={handleSignOut}
-              className="p-2 rounded hover:bg-[var(--hover-bg)] text-gray-600 dark:text-gray-400"
+              className="p-2 rounded hover:bg-[var(--hover-bg)] text-[var(--muted)]"
               title="Sign out"
             >
               <LogOut size={18} />
@@ -181,14 +194,14 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="p-3 border-b border-[var(--border-color)] flex gap-2">
         <button
           onClick={() => router.push('/app/note/new')}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex-1"
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-[var(--accent)] text-white rounded-md hover:bg-[var(--accent-hover)] flex-1"
         >
           <Plus size={16} />
           New Note
         </button>
         <button
           onClick={() => setShowNewFolder(true)}
-          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-[var(--hover-bg)] rounded-md"
+          className="p-2 text-[var(--muted)] hover:bg-[var(--hover-bg)] rounded-md"
           title="New Folder"
         >
           <FolderPlus size={18} />
@@ -207,19 +220,19 @@ export function Sidebar({ className }: SidebarProps) {
               if (e.key === 'Enter') createFolder()
               if (e.key === 'Escape') setShowNewFolder(false)
             }}
-            className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 text-sm bg-[var(--input-bg)] border border-[var(--border-color)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--accent)] text-[var(--foreground)]"
             autoFocus
           />
           <div className="flex gap-2 mt-2">
             <button
               onClick={createFolder}
-              className="px-3 py-1 text-xs bg-indigo-600 text-white rounded"
+              className="px-3 py-1 text-xs bg-[var(--accent)] text-white rounded"
             >
               Create
             </button>
             <button
               onClick={() => setShowNewFolder(false)}
-              className="px-3 py-1 text-xs text-gray-600 dark:text-gray-400"
+              className="px-3 py-1 text-xs text-[var(--muted)]"
             >
               Cancel
             </button>
@@ -231,28 +244,38 @@ export function Sidebar({ className }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-2">
         {/* Folders */}
         <div className="mb-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+          <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2">
             Folders
           </div>
           {folders.length === 0 && (
-            <div className="text-xs text-gray-400 px-3 py-2">
+            <div className="text-xs text-[var(--muted)] px-3 py-2">
               No folders yet
             </div>
           )}
           {folders.map(folder => (
             <div key={folder.id}>
-              <button
-                onClick={() => toggleFolder(folder.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-[var(--hover-bg)] rounded-md"
-              >
-                {expandedFolders.has(folder.id) ? (
-                  <ChevronDown size={14} />
-                ) : (
-                  <ChevronRight size={14} />
-                )}
-                <Folder size={16} className="text-yellow-500" />
-                <span>{folder.name}</span>
-              </button>
+              <div className="group flex items-center">
+                <button
+                  onClick={() => toggleFolder(folder.id)}
+                  className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
+                >
+                  {expandedFolders.has(folder.id) ? (
+                    <ChevronDown size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                  <Folder size={16} className="text-[var(--accent)]" />
+                  <span className="truncate">{folder.name}</span>
+                </button>
+                <button
+                  onClick={() => deleteFolder(folder.id)}
+                  disabled={deletingFolder === folder.id}
+                  className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--hover-bg)] text-[var(--muted)] hover:text-[var(--danger)] transition-opacity"
+                  title="Delete folder"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
               {expandedFolders.has(folder.id) && (
                 <div className="ml-6">
                   {notes
@@ -264,8 +287,8 @@ export function Sidebar({ className }: SidebarProps) {
                         className={cn(
                           "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
                           pathname === `/app/note/${note.id}`
-                            ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                            : "text-gray-600 dark:text-gray-400"
+                            ? "bg-[var(--accent-light)] text-[var(--accent)]"
+                            : "text-[var(--foreground)]"
                         )}
                       >
                         <FileText size={14} />
@@ -280,11 +303,11 @@ export function Sidebar({ className }: SidebarProps) {
 
         {/* All Notes */}
         <div className="mb-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+          <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2">
             {searchQuery.length > 0 ? 'Search Results' : 'All Notes'}
           </div>
           {displayedNotes.length === 0 && (
-            <div className="text-xs text-gray-400 px-3 py-2">
+            <div className="text-xs text-[var(--muted)] px-3 py-2">
               {searchQuery.length > 0 ? 'No results found' : 'No notes yet'}
             </div>
           )}
@@ -295,8 +318,8 @@ export function Sidebar({ className }: SidebarProps) {
               className={cn(
                 "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
                 pathname === `/app/note/${note.id}`
-                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                  : "text-gray-600 dark:text-gray-400"
+                  ? "bg-[var(--accent-light)] text-[var(--accent)]"
+                  : "text-[var(--foreground)]"
               )}
             >
               <FileText size={14} />
@@ -305,12 +328,10 @@ export function Sidebar({ className }: SidebarProps) {
           ))}
         </div>
 
-        {/* Tags */}
-
         {/* Shared Notes */}
         {sharedNotes.length > 0 && (
           <div className="mb-4">
-            <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2 flex items-center gap-2">
+            <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2 flex items-center gap-2">
               <Share2 size={12} />
               Shared with me
             </div>
@@ -321,8 +342,8 @@ export function Sidebar({ className }: SidebarProps) {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
                   pathname === `/app/note/${note.id}`
-                    ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
-                    : "text-gray-600 dark:text-gray-400"
+                    ? "bg-[var(--accent-light)] text-[var(--accent)]"
+                    : "text-[var(--foreground)]"
                 )}
               >
                 <FileText size={14} />
@@ -332,10 +353,11 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         )}
 
+        {/* Archive */}
         <div className="mb-4">
           <Link
             href="/app/archive"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-[var(--hover-bg)] rounded-md"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
           >
             <Archive size={14} />
             <span>Archive</span>
@@ -346,7 +368,7 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="mb-4">
           <Link
             href="/app/admin"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-[var(--hover-bg)] rounded-md"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
           >
             <Shield size={14} />
             <span>Admin</span>
@@ -356,8 +378,8 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* User Info */}
       <div className="p-3 border-t border-[var(--border-color)]">
-        <Link href="/app/profile" className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-[var(--hover-bg)] rounded-md p-1 -m-1">
-          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium">
+        <Link href="/app/profile" className="flex items-center gap-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md p-1 -m-1">
+          <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium">
             {user?.email?.[0]?.toUpperCase()}
           </div>
           <span className="truncate flex-1">{user?.email}</span>

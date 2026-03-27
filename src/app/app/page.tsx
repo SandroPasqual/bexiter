@@ -11,7 +11,7 @@ export default function AppPage() {
   const { user } = useAuth()
   const router = useRouter()
   const supabase = createSupabaseBrowserClient()
-  
+
   const [recentNotes, setRecentNotes] = useState<NoteWithTags[]>([])
   const [folderCount, setFolderCount] = useState(0)
   const [tagCount, setTagCount] = useState(0)
@@ -43,48 +43,50 @@ export default function AppPage() {
     setTagCount(tags || 0)
   }
 
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'there'
+
   return (
     <div className="h-full p-8 overflow-y-auto">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome back
+        <h1 className="text-3xl font-bold text-[var(--foreground)] mb-2">
+          Welcome back, {displayName}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
+        <p className="text-[var(--muted)] mb-8">
           Your personal knowledge companion
         </p>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="p-4 bg-[var(--sidebar-bg)] rounded-lg border border-[var(--border-color)]">
+          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
             <div className="flex items-center gap-3">
-              <FileText size={24} className="text-indigo-500" />
+              <FileText size={24} className="text-[var(--accent)]" />
               <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="text-2xl font-bold text-[var(--foreground)]">
                   {recentNotes.length}+
                 </div>
-                <div className="text-sm text-gray-500">Recent Notes</div>
+                <div className="text-sm text-[var(--muted)]">Recent Notes</div>
               </div>
             </div>
           </div>
-          <div className="p-4 bg-[var(--sidebar-bg)] rounded-lg border border-[var(--border-color)]">
+          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
             <div className="flex items-center gap-3">
-              <FolderOpen size={24} className="text-yellow-500" />
+              <FolderOpen size={24} className="text-[var(--accent)]" />
               <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="text-2xl font-bold text-[var(--foreground)]">
                   {folderCount}
                 </div>
-                <div className="text-sm text-gray-500">Folders</div>
+                <div className="text-sm text-[var(--muted)]">Folders</div>
               </div>
             </div>
           </div>
-          <div className="p-4 bg-[var(--sidebar-bg)] rounded-lg border border-[var(--border-color)]">
+          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
             <div className="flex items-center gap-3">
-              <Tag size={24} className="text-green-500" />
+              <Tag size={24} className="text-[var(--accent)]" />
               <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                <div className="text-2xl font-bold text-[var(--foreground)]">
                   {tagCount}
                 </div>
-                <div className="text-sm text-gray-500">Tags</div>
+                <div className="text-sm text-[var(--muted)]">Tags</div>
               </div>
             </div>
           </div>
@@ -92,12 +94,12 @@ export default function AppPage() {
 
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
             Quick Actions
           </h2>
           <button
             onClick={() => router.push('/app/note/new')}
-            className="flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="flex items-center gap-2 px-4 py-3 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)]"
           >
             <Plus size={20} />
             Create New Note
@@ -106,11 +108,11 @@ export default function AppPage() {
 
         {/* Recent Notes */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
             Recent Notes
           </h2>
           {recentNotes.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
+            <div className="text-[var(--muted)] text-center py-8">
               No notes yet. Create your first note to get started!
             </div>
           ) : (
@@ -119,12 +121,12 @@ export default function AppPage() {
                 <button
                   key={note.id}
                   onClick={() => router.push(`/app/note/${note.id}`)}
-                  className="w-full text-left p-4 bg-[var(--sidebar-bg)] rounded-lg border border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
+                  className="w-full text-left p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] hover:bg-[var(--hover-bg)] transition-colors"
                 >
-                  <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="font-medium text-[var(--foreground)]">
                     {note.title || 'Untitled'}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-[var(--muted)] mt-1">
                     {note.content?.substring(0, 100)}...
                   </div>
                 </button>
