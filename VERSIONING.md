@@ -19,9 +19,13 @@ master ─── tag: v1 (commit dd4df0a)
 - **Live:** https://bexiter.vercel.app
 - **Stack:** Next.js 14, React 18, TypeScript, Tailwind CSS, Supabase
 
-### v2 - În dezvoltare
+### v2 - Implementat
 - **Branch:** `v2`
-- **Status:** În planificare
+- **Commits:** `a4f832e`, `dd5ee52`, `4f0731e`
+- **Descriere:** Auth îmbunătățit (toggle parolă, forgot/reset password), profil utilizator, panou admin, colaborare pe notițe cu roluri, securizare MCP API
+- **Live:** https://bexiter.vercel.app (necesită push + deploy)
+- **DB:** Necesită rularea SQL din `SUPRBASE_SETUP.md` în Supabase
+- Vezi [CHANGELOG.md](CHANGELOG.md) pentru detalii complete
 
 ## Cum se lucrează
 
