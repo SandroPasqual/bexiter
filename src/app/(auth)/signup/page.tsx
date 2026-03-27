@@ -37,7 +37,7 @@ export default function SignupPage() {
       setError(error.message || 'Failed to create account')
       setLoading(false)
     } else {
-      router.push('/login')
+      router.push('/app')
     }
   }
 

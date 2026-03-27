@@ -1,39 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
-  Eye, Split, Bold, Italic, List, ListOrdered,
-  Code, Link2, Quote, Heading1, Heading2, Heading3,
   ArrowLeft, Trash2, Archive, Download,
-  Tag, Folder, Share2
+  Tag, Folder, Share2, Columns2, Minus, AlignLeft
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { ShareDialog } from '@/components/ShareDialog'
+import { TiptapEditor } from '@/components/TiptapEditor'
 import type { Note, Folder as FolderType, Tag as TagType } from '@/types'
 
-type EditorMode = 'edit' | 'preview' | 'split'
+type TemplateMode = 'compact' | 'medium' | 'reader'
 
 export function NoteEditor() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
   const supabase = createSupabaseBrowserClient()
-  
+
   const noteId = params.id as string
   const isNewNote = noteId === 'new'
-  
+
   const [note, setNote] = useState<Note | null>(null)
   const [folders, setFolders] = useState<FolderType[]>([])
   const [tags, setTags] = useState<TagType[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [mode, setMode] = useState<EditorMode>('split')
+  const [template, setTemplate] = useState<TemplateMode>('medium')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
@@ -41,9 +36,9 @@ export function NoteEditor() {
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
-  
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [noteLoaded, setNoteLoaded] = useState(false)
+
+  const saveTimeoutRef = useState<NodeJS.Timeout | null>(null)[0]
 
   useEffect(() => {
     if (user) {
@@ -51,15 +46,18 @@ export function NoteEditor() {
       loadTags()
       if (!isNewNote) {
         loadNote()
+      } else {
+        setNoteLoaded(true)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, noteId])
 
   useEffect(() => {
-    if (note && !isNewNote) {
+    if (note && !isNewNote && !noteLoaded) {
       setTitle(note.title)
       setContent(note.content)
+      setNoteLoaded(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note])
@@ -70,7 +68,7 @@ export function NoteEditor() {
       .select('*')
       .eq('id', noteId)
       .single()
-    
+
     if (data) {
       setNote(data)
       loadNoteTags(data.id)
@@ -82,7 +80,7 @@ export function NoteEditor() {
       .from('note_tags')
       .select('tag_id')
       .eq('note_id', noteId)
-    
+
     if (data) {
       setSelectedTags(data.map(t => t.tag_id))
     }
@@ -104,17 +102,17 @@ export function NoteEditor() {
     if (data) setTags(data)
   }
 
-  const saveNote = useCallback(async () => {
-    if (!user || !title.trim()) return
-    
+  const saveNote = useCallback(async (currentTitle: string, currentContent: string) => {
+    if (!user || !currentTitle.trim()) return
+
     setSaving(true)
-    
+
     const noteData = {
-      title: title.trim(),
-      content,
+      title: currentTitle.trim(),
+      content: currentContent,
       updated_at: new Date().toISOString()
     }
-    
+
     if (isNewNote) {
       const { data, error } = await supabase
         .from('notes')
@@ -124,7 +122,7 @@ export function NoteEditor() {
         })
         .select()
         .single()
-      
+
       if (!error && data) {
         setNote(data)
         router.replace(`/app/note/${data.id}`)
@@ -135,92 +133,63 @@ export function NoteEditor() {
         .from('notes')
         .update(noteData)
         .eq('id', note.id)
-      
+
       if (!error) {
         setLastSaved(new Date())
       }
     }
-    
+
     setSaving(false)
-  }, [user, title, content, isNewNote, note, router, supabase])
+  }, [user, isNewNote, note, router, supabase])
+
+  const handleContentChange = useCallback((html: string) => {
+    setContent(html)
+  }, [])
+
+  const handleTitleChange = useCallback((newTitle: string) => {
+    setTitle(newTitle)
+  }, [])
 
   useEffect(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-    
-    if (note || isNewNote) {
-      saveTimeoutRef.current = setTimeout(() => {
-        saveNote()
-      }, 2000)
-    }
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
+    const timer = setTimeout(() => {
+      if (title.trim()) {
+        saveNote(title, content)
       }
-    }
-  }, [title, content, saveNote, note, isNewNote])
+    }, 2000)
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value)
-  }
-
-  const insertText = (before: string, after: string = '') => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-    
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
-    
-    const newContent = 
-      content.substring(0, start) + 
-      before + selectedText + after + 
-      content.substring(end)
-    
-    setContent(newContent)
-    
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
-    }, 0)
-  }
-
-  const handleDoubleLink = () => {
-    insertText('[[', ']]')
-  }
+    return () => clearTimeout(timer)
+  }, [title, content, saveNote])
 
   const exportNote = () => {
-    const blob = new Blob([content], { type: 'text/markdown' })
+    const blob = new Blob([content], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title || 'note'}.md`
+    a.download = `${title || 'note'}.html`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const deleteNote = async () => {
     if (!note || !confirm('Are you sure you want to delete this note?')) return
-    
+
     await supabase.from('notes').delete().eq('id', note.id)
     router.push('/app')
   }
 
   const archiveNote = async () => {
     if (!note) return
-    
+
     await supabase
       .from('notes')
       .update({ is_archived: true })
       .eq('id', note.id)
-    
+
     router.push('/app')
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-[var(--background)]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)]">
         <div className="flex items-center gap-3">
@@ -228,76 +197,71 @@ export function NoteEditor() {
             onClick={() => router.push('/app')}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
           >
-            <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" />
+            <ArrowLeft size={18} className="text-[var(--muted)]" />
           </button>
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
-            className="text-xl font-semibold bg-transparent border-none outline-none text-gray-900 dark:text-white"
+            className="text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)]"
           />
-          {saving && <span className="text-xs text-gray-400">Saving...</span>}
+          {saving && <span className="text-xs text-[var(--muted)]">Saving...</span>}
           {lastSaved && !saving && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--muted)]">
               Saved {lastSaved.toLocaleTimeString()}
             </span>
           )}
         </div>
-        
+
         <div className="flex items-center gap-1">
-          <div className="flex items-center border border-[var(--border-color)] rounded-md">
+          {/* Template Toggle */}
+          <div className="flex items-center border border-[var(--border-color)] rounded-md mr-2">
             <button
-              onClick={() => setMode('edit')}
-              className={cn(
-                "p-2", mode === 'edit' && "bg-[var(--hover-bg)]"
-              )}
-              title="Edit"
+              onClick={() => setTemplate('compact')}
+              className={cn('p-2', template === 'compact' && 'bg-[var(--hover-bg)]')}
+              title="Compact"
             >
-              <Bold size={16} className="text-gray-600 dark:text-gray-400" />
+              <Minus size={16} className="text-[var(--muted)]" />
             </button>
             <button
-              onClick={() => setMode('split')}
-              className={cn(
-                "p-2", mode === 'split' && "bg-[var(--hover-bg)]"
-              )}
-              title="Split"
+              onClick={() => setTemplate('medium')}
+              className={cn('p-2', template === 'medium' && 'bg-[var(--hover-bg)]')}
+              title="Medium"
             >
-              <Split size={16} className="text-gray-600 dark:text-gray-400" />
+              <Columns2 size={16} className="text-[var(--muted)]" />
             </button>
             <button
-              onClick={() => setMode('preview')}
-              className={cn(
-                "p-2", mode === 'preview' && "bg-[var(--hover-bg)]"
-              )}
-              title="Preview"
+              onClick={() => setTemplate('reader')}
+              className={cn('p-2', template === 'reader' && 'bg-[var(--hover-bg)]')}
+              title="Reader"
             >
-              <Eye size={16} className="text-gray-600 dark:text-gray-400" />
+              <AlignLeft size={16} className="text-[var(--muted)]" />
             </button>
           </div>
-          
+
           <button
             onClick={() => setShowFolderPicker(!showFolderPicker)}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
             title="Move to folder"
           >
-            <Folder size={18} className="text-gray-600 dark:text-gray-400" />
+            <Folder size={18} className="text-[var(--muted)]" />
           </button>
-          
+
           <button
             onClick={() => setShowTagPicker(!showTagPicker)}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
             title="Tags"
           >
-            <Tag size={18} className="text-gray-600 dark:text-gray-400" />
+            <Tag size={18} className="text-[var(--muted)]" />
           </button>
-          
+
           <button
             onClick={exportNote}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
-            title="Export as MD"
+            title="Export"
           >
-            <Download size={18} className="text-gray-600 dark:text-gray-400" />
+            <Download size={18} className="text-[var(--muted)]" />
           </button>
 
           {!isNewNote && (
@@ -306,18 +270,18 @@ export function NoteEditor() {
               className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
               title="Share"
             >
-              <Share2 size={18} className="text-gray-600 dark:text-gray-400" />
+              <Share2 size={18} className="text-[var(--muted)]" />
             </button>
           )}
-          
+
           <button
             onClick={archiveNote}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
             title="Archive"
           >
-            <Archive size={18} className="text-gray-600 dark:text-gray-400" />
+            <Archive size={18} className="text-[var(--muted)]" />
           </button>
-          
+
           <button
             onClick={deleteNote}
             className="p-2 hover:bg-[var(--hover-bg)] rounded-md text-red-500"
@@ -328,113 +292,21 @@ export function NoteEditor() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-[var(--border-color)]">
-        <button onClick={() => insertText('**', '**')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Bold">
-          <Bold size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={() => insertText('*', '*')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Italic">
-          <Italic size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <div className="w-px h-6 bg-[var(--border-color)]" />
-        <button onClick={() => insertText('# ')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Heading 1">
-          <Heading1 size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={() => insertText('## ')} className="p-2 hover:bg-[var(--hover-bg)] rounding" title="Heading 2">
-          <Heading2 size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={() => insertText('### ')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Heading 3">
-          <Heading3 size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <div className="w-px h-6 bg-[var(--border-color)]" />
-        <button onClick={() => insertText('- ')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Bullet List">
-          <List size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={() => insertText('1. ')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Numbered List">
-          <ListOrdered size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <div className="w-px h-6 bg-[var(--border-color)]" />
-        <button onClick={() => insertText('`', '`')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Inline Code">
-          <Code size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={() => insertText('> ')} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Quote">
-          <Quote size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-        <button onClick={handleDoubleLink} className="p-2 hover:bg-[var(--hover-bg)] rounded" title="Double Link [[]]">
-          <Link2 size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Editor */}
-        {(mode === 'edit' || mode === 'split') && (
-          <textarea
-            ref={textareaRef}
-            value={content}
+      {/* Editor */}
+      <div className="flex-1 overflow-hidden">
+        {noteLoaded && (
+          <TiptapEditor
+            content={content}
             onChange={handleContentChange}
-            placeholder="Start writing in Markdown..."
-            className={cn(
-              "flex-1 p-4 resize-none bg-transparent outline-none font-mono text-sm",
-              "text-gray-900 dark:text-white",
-              mode === 'split' && "border-r border-[var(--border-color)]"
-            )}
+            template={template}
+            placeholder="Start writing..."
           />
-        )}
-        
-        {/* Preview */}
-        {(mode === 'preview' || mode === 'split') && (
-          <div className="flex-1 p-4 overflow-y-auto markdown-editor">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '')
-                  const isInline = !match
-                  return !isInline && match ? (
-                    <SyntaxHighlighter
-                      style={oneDark}
-                      language={match[1]}
-                      PreTag="div"
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  )
-                },
-                a({ href, children, ...props }) {
-                  const isWikiLink = href?.startsWith('[[') && href?.endsWith(']]')
-                  if (isWikiLink && href) {
-                    const noteTitle = href.slice(2, -2)
-                    return (
-                      <span
-                        className="wiki-link"
-                        onClick={() => router.push(`/app/note/${noteTitle}`)}
-                      >
-                        {children}
-                      </span>
-                    )
-                  }
-                  return (
-                    <a href={href} {...props} target="_blank" rel="noopener noreferrer">
-                      {children}
-                    </a>
-                  )
-                }
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
         )}
       </div>
 
       {/* Folder Picker Dropdown */}
       {showFolderPicker && (
-        <div className="absolute right-20 top-24 bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded-md shadow-lg z-10">
+        <div className="absolute right-20 top-24 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-10">
           <div className="p-2">
             <button
               onClick={async () => {
@@ -468,10 +340,10 @@ export function NoteEditor() {
 
       {/* Tag Picker Dropdown */}
       {showTagPicker && (
-        <div className="absolute right-12 top-24 bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+        <div className="absolute right-12 top-24 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
           <div className="p-2">
             {tags.length === 0 && (
-              <div className="px-3 py-2 text-sm text-gray-400">No tags yet</div>
+              <div className="px-3 py-2 text-sm text-[var(--muted)]">No tags yet</div>
             )}
             {tags.map(tag => (
               <button
