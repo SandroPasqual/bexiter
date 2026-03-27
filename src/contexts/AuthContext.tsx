@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
+import { User, SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 
 interface AuthContextType {
@@ -18,7 +18,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef<SupabaseClient | null>(null)
+
+  if (!supabaseRef.current) {
+    supabaseRef.current = createSupabaseBrowserClient()
+  }
+
+  const supabase = supabaseRef.current
 
   useEffect(() => {
     const initAuth = async () => {
