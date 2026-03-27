@@ -35,6 +35,7 @@ export function TiptapEditor({ content, onChange, template = 'medium', placehold
       Placeholder.configure({ placeholder }),
     ],
     content,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
     },
