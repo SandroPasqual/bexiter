@@ -106,6 +106,15 @@ Available tools:
 
 ---
 
+## 📌 Versioning
+
+- **v1** - Stable release (tagged `v1` on master)
+- **v2** - Current development branch
+
+See [VERSIONING.md](VERSIONING.md) for details.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS
