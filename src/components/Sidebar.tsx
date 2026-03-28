@@ -559,11 +559,12 @@ console.log(hello);</code></pre>
   }
 
   const loadSharedNotes = async () => {
-    const { data: collabs } = await supabase
+    const { data: collabs, error: collabError } = await supabase
       .from('note_collaborators')
       .select('note_id')
       .eq('user_id', user?.id)
 
+    if (collabError) return
     if (!collabs || collabs.length === 0) return
 
     const noteIds = collabs.map(c => c.note_id)
