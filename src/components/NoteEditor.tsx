@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import {
   Trash2, Archive, Download,
@@ -45,6 +45,26 @@ export function NoteEditor() {
   const exportDropdownRef = useRef<HTMLDivElement>(null)
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const folderPath = useMemo(() => {
+    const folderId = note?.folder_id || (isNewNote ? initialFolderId : null)
+    if (!folderId || folders.length === 0) return null
+
+    const path: string[] = []
+    let currentId: string | null = folderId
+    const visited = new Set<string>()
+
+    while (currentId) {
+      if (visited.has(currentId)) break
+      visited.add(currentId)
+      const folder = folders.find(f => f.id === currentId)
+      if (!folder) break
+      path.unshift(folder.name)
+      currentId = folder.parent_id
+    }
+
+    return path.length > 0 ? path : null
+  }, [note?.folder_id, folders, isNewNote, initialFolderId])
 
   useEffect(() => {
     if (user) {
@@ -253,25 +273,32 @@ export function NoteEditor() {
       {/* Header */}
       <div className="border-b border-[var(--border-color)]">
         {/* Row 1: Done + Title + Save status */}
-        <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
-          <button
-            onClick={() => router.push('/app')}
-            className="px-3 py-1.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--hover-bg)] rounded-md whitespace-nowrap"
-          >
-            Done
-          </button>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Untitled"
-            className="flex-1 min-w-0 text-lg sm:text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)] truncate"
-          />
-          {saving && <span className="text-xs text-[var(--muted)] whitespace-nowrap">Saving...</span>}
-          {lastSaved && !saving && (
-            <span className="text-xs text-[var(--muted)] whitespace-nowrap hidden sm:inline">
-              Saved {lastSaved.toLocaleTimeString()}
-            </span>
+        <div className="px-3 py-2 sm:px-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/app')}
+              className="px-3 py-1.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--hover-bg)] rounded-md whitespace-nowrap"
+            >
+              Done
+            </button>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="Untitled"
+              className="flex-1 min-w-0 text-lg sm:text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)] truncate"
+            />
+            {saving && <span className="text-xs text-[var(--muted)] whitespace-nowrap">Saving...</span>}
+            {lastSaved && !saving && (
+              <span className="text-xs text-[var(--muted)] whitespace-nowrap hidden sm:inline">
+                Saved {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+          {folderPath && (
+            <div className="text-xs text-[var(--muted)] mt-0.5 truncate pl-1">
+              ./{folderPath.join('/')}
+            </div>
           )}
         </div>
 
