@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
@@ -11,7 +11,8 @@ import type { NoteWithTags } from '@/types'
 export default function AppPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   const [recentNotes, setRecentNotes] = useState<NoteWithTags[]>([])
   const [folderCount, setFolderCount] = useState(0)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, UserPlus, Trash2, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 
@@ -25,7 +25,8 @@ export function ShareDialog({ noteId, ownerId, currentUserEmail, onClose }: Shar
   const [loading, setLoading] = useState(true)
   const [inviting, setInviting] = useState(false)
   const [message, setMessage] = useState({ text: '', type: '' })
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   const loadCollaborators = useCallback(async () => {
     const { data } = await supabase

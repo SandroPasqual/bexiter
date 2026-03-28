@@ -41,7 +41,8 @@ export function TiptapEditor({ content, onChange, template = 'medium', placehold
   const dropdownRef = useRef<HTMLDivElement>(null)
   const tableDropdownRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null)
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   useEffect(() => {
     const loadNotes = async () => {

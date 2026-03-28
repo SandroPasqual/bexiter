@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { Tag, Plus, X, Trash2, Edit } from 'lucide-react'
 import type { Tag as TagType } from '@/types'
-import { getRandomColor } from '@/lib/utils'
+import { getRandomColor, COLOR_OPTIONS } from '@/lib/utils'
 
 export default function TagsPage() {
   const { user } = useAuth()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
   
   const [tags, setTags] = useState<TagType[]>([])
   const [showNewTag, setShowNewTag] = useState(false)
@@ -82,25 +83,19 @@ export default function TagsPage() {
     }
   }
 
-  const colorOptions = [
-    '#EF4444', '#F97316', '#F59E0B', '#84CC16',
-    '#22C55E', '#14B8A6', '#06B6D4', '#3B82F6',
-    '#6366F1', '#8B5CF6', '#A855F7', '#EC4899'
-  ]
-
   return (
     <div className="h-full p-8 overflow-y-auto">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Tag size={28} className="text-gray-600 dark:text-gray-400" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <Tag size={28} className="text-[var(--muted)]" />
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">
               Tags
             </h1>
           </div>
           <button
             onClick={() => setShowNewTag(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)]"
           >
             <Plus size={18} />
             New Tag
@@ -116,22 +111,22 @@ export default function TagsPage() {
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 placeholder="Tag name"
-                className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded-md text-gray-900 dark:text-white"
+                className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--border-color)] rounded-md text-[var(--foreground)]"
                 autoFocus
               />
               <div className="flex items-center gap-2">
-                {colorOptions.map(color => (
+                {COLOR_OPTIONS.map(color => (
                   <button
                     key={color}
                     onClick={() => setNewTagColor(color)}
-                    className={`w-6 h-6 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
+                    className={`w-6 h-6 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-2 ring-[var(--accent)]' : ''}`}
                     style={{ backgroundColor: color }}
                   />
                 ))}
               </div>
               <button
                 onClick={createTag}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                className="px-4 py-2 bg-[var(--accent)] text-white rounded-md hover:bg-[var(--accent-hover)]"
               >
                 Create
               </button>
@@ -147,7 +142,7 @@ export default function TagsPage() {
 
         {/* Tags List */}
         {tags.length === 0 ? (
-          <div className="text-gray-500 text-center py-8">
+          <div className="text-[var(--muted)] text-center py-8">
             No tags yet. Create your first tag to organize your notes!
           </div>
         ) : (
@@ -163,7 +158,7 @@ export default function TagsPage() {
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 px-3 py-1 bg-white dark:bg-gray-800 border border-[var(--border-color)] rounded text-gray-900 dark:text-white"
+                      className="flex-1 px-3 py-1 bg-[var(--input-bg)] border border-[var(--border-color)] rounded text-[var(--foreground)]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') updateTag(tag.id)
@@ -190,7 +185,7 @@ export default function TagsPage() {
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: tag.color }}
                       />
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="font-medium text-[var(--foreground)]">
                         {tag.name}
                       </span>
                     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
+import { cn, isAdmin } from '@/lib/utils'
 import type { Folder as FolderType, NoteWithTags, FolderWithNotes } from '@/types'
 
 interface SidebarProps {
@@ -401,7 +401,8 @@ export function Sidebar({ className }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme()
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -993,16 +994,17 @@ console.log(hello);</code></pre>
           </Link>
         </div>
 
-        {/* Admin */}
-        <div className="mb-4">
-          <Link
-            href="/app/admin"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
-          >
-            <Shield size={14} />
-            <span>Admin</span>
-          </Link>
-        </div>
+        {isAdmin(user?.email) && (
+          <div className="mb-4">
+            <Link
+              href="/app/admin"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
+            >
+              <Shield size={14} />
+              <span>Admin</span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* User Info */}

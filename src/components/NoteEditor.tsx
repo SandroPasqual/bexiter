@@ -21,7 +21,8 @@ export function NoteEditor() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   const noteId = params.id as string
   const isNewNote = noteId === 'new'

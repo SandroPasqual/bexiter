@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { Loader2, User, Mail, Lock, BarChart3, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user } = useAuth()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   const [displayName, setDisplayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -81,7 +81,6 @@ export default function ProfilePage() {
       setPasswordError(error.message)
     } else {
       setPasswordSuccess('Password changed successfully')
-      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
@@ -13,7 +13,8 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
-  const supabase = createSupabaseBrowserClient()
+  const supabaseRef = useRef(createSupabaseBrowserClient())
+  const supabase = supabaseRef.current
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
