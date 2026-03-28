@@ -48,49 +48,42 @@ export default function AppPage() {
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'there'
 
   return (
-    <div className="h-full p-8 overflow-y-auto">
+    <div className="h-full p-4 sm:p-8 overflow-y-auto">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-[var(--foreground)] mb-2">
-          Welcome back, {displayName}
-        </h1>
-        <p className="text-[var(--muted)] mb-8">
+        <div className="sm:text-left text-right mb-6 sm:mb-2">
+          <h1 className="text-xl sm:text-3xl font-bold text-[var(--foreground)]">
+            Welcome,
+          </h1>
+          <p className="text-lg sm:text-3xl font-bold text-[var(--foreground)]">
+            {displayName}
+          </p>
+        </div>
+        <p className="text-[var(--muted)] mb-6 sm:mb-8 hidden sm:block">
           Your personal knowledge companion
         </p>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
-            <div className="flex items-center gap-3">
-              <FileText size={24} className="text-[var(--accent)]" />
-              <div>
-                <div className="text-2xl font-bold text-[var(--foreground)]">
-                  {recentNotes.length}+
-                </div>
-                <div className="text-sm text-[var(--muted)]">Recent Notes</div>
-              </div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
+          <div className="p-3 sm:p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] text-center">
+            <FileText size={20} className="text-[var(--accent)] mx-auto mb-1" />
+            <div className="text-xl sm:text-2xl font-bold text-[var(--foreground)]">
+              {recentNotes.length}+
             </div>
+            <div className="text-xs sm:text-sm text-[var(--muted)]">Notes</div>
           </div>
-          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
-            <div className="flex items-center gap-3">
-              <FolderOpen size={24} className="text-[var(--accent)]" />
-              <div>
-                <div className="text-2xl font-bold text-[var(--foreground)]">
-                  {folderCount}
-                </div>
-                <div className="text-sm text-[var(--muted)]">Folders</div>
-              </div>
+          <div className="p-3 sm:p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] text-center">
+            <FolderOpen size={20} className="text-[var(--accent)] mx-auto mb-1" />
+            <div className="text-xl sm:text-2xl font-bold text-[var(--foreground)]">
+              {folderCount}
             </div>
+            <div className="text-xs sm:text-sm text-[var(--muted)]">Folders</div>
           </div>
-          <div className="p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
-            <div className="flex items-center gap-3">
-              <Tag size={24} className="text-[var(--accent)]" />
-              <div>
-                <div className="text-2xl font-bold text-[var(--foreground)]">
-                  {tagCount}
-                </div>
-                <div className="text-sm text-[var(--muted)]">Tags</div>
-              </div>
+          <div className="p-3 sm:p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] text-center">
+            <Tag size={20} className="text-[var(--accent)] mx-auto mb-1" />
+            <div className="text-xl sm:text-2xl font-bold text-[var(--foreground)]">
+              {tagCount}
             </div>
+            <div className="text-xs sm:text-sm text-[var(--muted)]">Tags</div>
           </div>
         </div>
 

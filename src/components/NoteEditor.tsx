@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import {
-  ArrowLeft, Trash2, Archive, Download,
+  Trash2, Archive, Download,
   Tag, Folder, Share2, Columns2, Minus, AlignLeft, FileText, FileCode
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
@@ -251,49 +251,51 @@ export function NoteEditor() {
   return (
     <div className="h-screen flex flex-col bg-[var(--background)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-color)]">
-        <div className="flex items-center gap-3">
+      <div className="border-b border-[var(--border-color)]">
+        {/* Row 1: Done + Title + Save status */}
+        <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
           <button
             onClick={() => router.push('/app')}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+            className="px-3 py-1.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--hover-bg)] rounded-md whitespace-nowrap"
           >
-            <ArrowLeft size={18} className="text-[var(--muted)]" />
+            Done
           </button>
           <input
             type="text"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
-            className="text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)]"
+            className="flex-1 min-w-0 text-lg sm:text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)] truncate"
           />
-          {saving && <span className="text-xs text-[var(--muted)]">Saving...</span>}
+          {saving && <span className="text-xs text-[var(--muted)] whitespace-nowrap">Saving...</span>}
           {lastSaved && !saving && (
-            <span className="text-xs text-[var(--muted)]">
+            <span className="text-xs text-[var(--muted)] whitespace-nowrap hidden sm:inline">
               Saved {lastSaved.toLocaleTimeString()}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Row 2: Actions toolbar */}
+        <div className="flex items-center gap-0.5 px-3 py-1.5 sm:px-4 overflow-x-auto">
           {/* Template Toggle */}
-          <div className="flex items-center border border-[var(--border-color)] rounded-md mr-2">
+          <div className="flex items-center border border-[var(--border-color)] rounded-md mr-1 shrink-0">
             <button
               onClick={() => setTemplate('compact')}
-              className={cn('p-2', template === 'compact' && 'bg-[var(--hover-bg)]')}
+              className={cn('p-1.5 sm:p-2', template === 'compact' && 'bg-[var(--hover-bg)]')}
               title="Compact"
             >
               <Minus size={16} className="text-[var(--muted)]" />
             </button>
             <button
               onClick={() => setTemplate('medium')}
-              className={cn('p-2', template === 'medium' && 'bg-[var(--hover-bg)]')}
+              className={cn('p-1.5 sm:p-2', template === 'medium' && 'bg-[var(--hover-bg)]')}
               title="Medium"
             >
               <Columns2 size={16} className="text-[var(--muted)]" />
             </button>
             <button
               onClick={() => setTemplate('reader')}
-              className={cn('p-2', template === 'reader' && 'bg-[var(--hover-bg)]')}
+              className={cn('p-1.5 sm:p-2', template === 'reader' && 'bg-[var(--hover-bg)]')}
               title="Reader"
             >
               <AlignLeft size={16} className="text-[var(--muted)]" />
@@ -302,7 +304,7 @@ export function NoteEditor() {
 
           <button
             onClick={() => setShowFolderPicker(!showFolderPicker)}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+            className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md shrink-0"
             title="Move to folder"
           >
             <Folder size={18} className="text-[var(--muted)]" />
@@ -310,21 +312,21 @@ export function NoteEditor() {
 
           <button
             onClick={() => setShowTagPicker(!showTagPicker)}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+            className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md shrink-0"
             title="Tags"
           >
             <Tag size={18} className="text-[var(--muted)]" />
           </button>
 
-          <div className="relative" ref={exportDropdownRef}>
+          <div className="relative shrink-0" ref={exportDropdownRef}>
             <button
               onClick={() => setShowExportDropdown(!showExportDropdown)}
-              className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+              className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md"
               title="Export"
             >
               <Download size={18} className="text-[var(--muted)]" />
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 top-full mt-1 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-36">
                 <button
@@ -346,7 +348,7 @@ export function NoteEditor() {
           {!isNewNote && (
             <button
               onClick={() => setShowShareDialog(true)}
-              className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+              className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md shrink-0"
               title="Share"
             >
               <Share2 size={18} className="text-[var(--muted)]" />
@@ -355,7 +357,7 @@ export function NoteEditor() {
 
           <button
             onClick={archiveNote}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+            className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md shrink-0"
             title="Archive"
           >
             <Archive size={18} className="text-[var(--muted)]" />
@@ -363,7 +365,7 @@ export function NoteEditor() {
 
           <button
             onClick={deleteNote}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md text-red-500"
+            className="p-1.5 sm:p-2 hover:bg-[var(--hover-bg)] rounded-md text-red-500 shrink-0"
             title="Delete"
           >
             <Trash2 size={18} />

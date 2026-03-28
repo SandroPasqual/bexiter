@@ -121,7 +121,7 @@ function NoteItem({
       </button>
       
       {isMenuOpen && (
-        <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
+        <div data-context-menu className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
           <button
             onClick={() => startRename('note', note.id, note.title)}
             className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
@@ -156,7 +156,7 @@ function NoteItem({
       )}
 
       {isMoveOpen && (
-        <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
+        <div data-context-menu className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
           <div className="text-xs text-[var(--muted)] px-3 py-2 border-b border-[var(--border-color)]">Move to</div>
           <button
             onClick={() => moveNote(note.id, null)}
@@ -275,7 +275,7 @@ function FolderItem({
         </button>
         
         {isMenuOpen && (
-          <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
+          <div data-context-menu className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
             <button
               onClick={() => startRename('folder', folder.id, folder.name)}
               className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
@@ -298,7 +298,7 @@ function FolderItem({
         )}
 
         {moveOpenId === folder.id && (
-          <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
+          <div data-context-menu className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
             <div className="text-xs text-[var(--muted)] px-3 py-2 border-b border-[var(--border-color)]">Move to</div>
             <button
               onClick={() => moveFolder(folder.id, null)}
@@ -435,6 +435,20 @@ export function Sidebar({ className }: SidebarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-context-menu]')) {
+        setNoteMenuOpen(null)
+        setNoteMoveOpen(null)
+        setFolderMenuOpen(null)
+        setFolderMoveOpen(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const loadFolders = async () => {
     const { data } = await supabase
       .from('folders')
@@ -454,24 +468,17 @@ export function Sidebar({ className }: SidebarProps) {
 
     if (data && user) {
       const welcomeNote = data.find(n => n.title === 'Welcome to Bexiter')
-      
+
       if (welcomeNote) {
-        localStorage.setItem('welcome-shown', 'true')
         localStorage.removeItem('welcome-creating')
         return
       }
-      
+
       if (data.length > 0) {
-        localStorage.setItem('welcome-shown', 'true')
         localStorage.removeItem('welcome-creating')
         return
       }
-      
-      const welcomeShown = localStorage.getItem('welcome-shown')
-      if (welcomeShown === 'true') {
-        return
-      }
-      
+
       const alreadyCreating = localStorage.getItem('welcome-creating')
       if (alreadyCreating === 'true') {
         localStorage.removeItem('welcome-creating')
