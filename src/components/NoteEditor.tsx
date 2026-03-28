@@ -281,13 +281,20 @@ export function NoteEditor() {
             >
               Done
             </button>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="Untitled"
-              className="flex-1 min-w-0 text-lg sm:text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)] truncate"
-            />
+            <div className="flex-1 min-w-0 flex items-baseline">
+              {folderPath && (
+                <span className="text-sm sm:text-base text-[var(--muted)] truncate shrink-0">
+                  ./{folderPath.join('/')}/
+                </span>
+              )}
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="Untitled"
+                className="min-w-0 flex-1 text-lg sm:text-xl font-semibold bg-transparent border-none outline-none text-[var(--foreground)]"
+              />
+            </div>
             {saving && <span className="text-xs text-[var(--muted)] whitespace-nowrap">Saving...</span>}
             {lastSaved && !saving && (
               <span className="text-xs text-[var(--muted)] whitespace-nowrap hidden sm:inline">
@@ -295,11 +302,6 @@ export function NoteEditor() {
               </span>
             )}
           </div>
-          {folderPath && (
-            <div className="text-xs text-[var(--muted)] mt-0.5 truncate pl-1">
-              ./{folderPath.join('/')}
-            </div>
-          )}
         </div>
 
         {/* Row 2: Actions toolbar */}
