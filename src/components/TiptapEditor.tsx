@@ -419,7 +419,7 @@ export function TiptapEditor({ content, onChange, template = 'medium', placehold
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
         <EditorContent editor={editor} />
       </div>
     </div>
