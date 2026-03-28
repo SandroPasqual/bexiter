@@ -283,8 +283,8 @@ export function NoteEditor() {
             </button>
             <div className="flex-1 min-w-0 flex items-baseline">
               {folderPath && (
-                <span className="text-sm sm:text-base text-[var(--muted)] truncate shrink-0">
-                  ./{folderPath.join('/')}/
+                <span className="text-lg sm:text-xl text-[var(--muted)] truncate shrink-0">
+                  ./{folderPath.join('/')}/&nbsp;
                 </span>
               )}
               <input
