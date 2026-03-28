@@ -22,6 +22,7 @@ export interface Note {
   content: string
   folder_id: string | null
   is_archived: boolean
+  is_pinned: boolean
   created_at: string
   updated_at: string
 }

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Trash2, Archive, Download,
-  Tag, Folder, Share2, Columns2, Minus, AlignLeft
+  Tag, Folder, Share2, Columns2, Minus, AlignLeft, FileText, FileCode
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { ShareDialog } from '@/components/ShareDialog'
 import { TiptapEditor } from '@/components/TiptapEditor'
 import type { Note, Folder as FolderType, Tag as TagType } from '@/types'
+import TurndownService from 'turndown'
 
 type TemplateMode = 'compact' | 'medium' | 'reader'
 
@@ -38,9 +39,11 @@ export function NoteEditor() {
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [showExportDropdown, setShowExportDropdown] = useState(false)
   const [noteLoaded, setNoteLoaded] = useState(false)
+  const exportDropdownRef = useRef<HTMLDivElement>(null)
 
-  const saveTimeoutRef = useState<NodeJS.Timeout | null>(null)[0]
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -65,12 +68,17 @@ export function NoteEditor() {
   }, [note])
 
   const loadNote = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notes')
       .select('*')
       .eq('id', noteId)
       .single()
 
+    if (error) {
+      console.error('Failed to load note:', error)
+      router.push('/app')
+      return
+    }
     if (data) {
       setNote(data)
       loadNoteTags(data.id)
@@ -89,18 +97,26 @@ export function NoteEditor() {
   }
 
   const loadFolders = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('folders')
       .select('*')
       .order('name')
+    if (error) {
+      console.error('Failed to load folders:', error)
+      return
+    }
     if (data) setFolders(data)
   }
 
   const loadTags = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tags')
       .select('*')
       .order('name')
+    if (error) {
+      console.error('Failed to load tags:', error)
+      return
+    }
     if (data) setTags(data)
   }
 
@@ -154,40 +170,80 @@ export function NoteEditor() {
   }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    saveTimeoutRef.current = setTimeout(() => {
       if (title.trim()) {
         saveNote(title, content)
       }
     }, 2000)
 
-    return () => clearTimeout(timer)
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
   }, [title, content, saveNote])
 
-  const exportNote = () => {
-    const blob = new Blob([content], { type: 'text/html' })
+  const exportNote = (format: 'html' | 'md') => {
+    let blob: Blob
+    let filename: string
+
+    if (format === 'html') {
+      blob = new Blob([content], { type: 'text/html' })
+      filename = `${title || 'note'}.html`
+    } else {
+      const turndown = new TurndownService()
+      const markdown = turndown.turndown(content)
+      blob = new Blob([markdown], { type: 'text/markdown' })
+      filename = `${title || 'note'}.md`
+    }
+    
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title || 'note'}.html`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+    setShowExportDropdown(false)
   }
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setShowExportDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const deleteNote = async () => {
     if (!note || !confirm('Are you sure you want to delete this note?')) return
 
-    await supabase.from('notes').delete().eq('id', note.id)
+    const { error } = await supabase.from('notes').delete().eq('id', note.id)
+    if (error) {
+      console.error('Failed to delete note:', error)
+      alert('Failed to delete note. Please try again.')
+      return
+    }
     router.push('/app')
   }
 
   const archiveNote = async () => {
     if (!note) return
 
-    await supabase
+    const { error } = await supabase
       .from('notes')
       .update({ is_archived: true })
       .eq('id', note.id)
 
+    if (error) {
+      console.error('Failed to archive note:', error)
+      alert('Failed to archive note. Please try again.')
+      return
+    }
     router.push('/app')
   }
 
@@ -259,13 +315,32 @@ export function NoteEditor() {
             <Tag size={18} className="text-[var(--muted)]" />
           </button>
 
-          <button
-            onClick={exportNote}
-            className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
-            title="Export"
-          >
-            <Download size={18} className="text-[var(--muted)]" />
-          </button>
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              className="p-2 hover:bg-[var(--hover-bg)] rounded-md"
+              title="Export"
+            >
+              <Download size={18} className="text-[var(--muted)]" />
+            </button>
+            
+            {showExportDropdown && (
+              <div className="absolute right-0 top-full mt-1 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-36">
+                <button
+                  onClick={() => exportNote('html')}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+                >
+                  <FileCode size={14} /> HTML
+                </button>
+                <button
+                  onClick={() => exportNote('md')}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+                >
+                  <FileText size={14} /> Markdown
+                </button>
+              </div>
+            )}
+          </div>
 
           {!isNewNote && (
             <button
@@ -314,12 +389,18 @@ export function NoteEditor() {
             <button
               onClick={async () => {
                 if (note) {
-                  await supabase.from('notes').update({ folder_id: null }).eq('id', note.id)
+                  const { error } = await supabase.from('notes').update({ folder_id: null }).eq('id', note.id)
+                  if (error) {
+                    console.error('Failed to move note:', error)
+                    return
+                  }
+                  setNote({ ...note, folder_id: null })
                 }
                 setShowFolderPicker(false)
               }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded"
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded flex items-center gap-2 ${note?.folder_id === null ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
             >
+              {note?.folder_id === null && <span className="text-[var(--accent)]">✓</span>}
               No Folder
             </button>
             {folders.map(folder => (
@@ -327,13 +408,19 @@ export function NoteEditor() {
                 key={folder.id}
                 onClick={async () => {
                   if (note) {
-                    await supabase.from('notes').update({ folder_id: folder.id }).eq('id', note.id)
+                    const { error } = await supabase.from('notes').update({ folder_id: folder.id }).eq('id', note.id)
+                    if (error) {
+                      console.error('Failed to move note:', error)
+                      return
+                    }
+                    setNote({ ...note, folder_id: folder.id })
                   }
                   setShowFolderPicker(false)
                 }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded flex items-center gap-2"
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded flex items-center gap-2 ${note?.folder_id === folder.id ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
               >
                 <Folder size={14} className="text-yellow-500" />
+                {note?.folder_id === folder.id && <span className="text-[var(--accent)]">✓</span>}
                 {folder.name}
               </button>
             ))}
@@ -355,16 +442,24 @@ export function NoteEditor() {
                   if (!note) return
                   const isSelected = selectedTags.includes(tag.id)
                   if (isSelected) {
-                    await supabase
+                    const { error } = await supabase
                       .from('note_tags')
                       .delete()
                       .eq('note_id', note.id)
                       .eq('tag_id', tag.id)
+                    if (error) {
+                      console.error('Failed to remove tag:', error)
+                      return
+                    }
                     setSelectedTags(prev => prev.filter(t => t !== tag.id))
                   } else {
-                    await supabase
+                    const { error } = await supabase
                       .from('note_tags')
                       .insert({ note_id: note.id, tag_id: tag.id })
+                    if (error) {
+                      console.error('Failed to add tag:', error)
+                      return
+                    }
                     setSelectedTags(prev => [...prev, tag.id])
                   }
                 }}

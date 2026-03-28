@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { Archive, RotateCcw, Trash2 } from 'lucide-react'
@@ -8,6 +9,7 @@ import type { NoteWithTags } from '@/types'
 
 export default function ArchivePage() {
   const { user } = useAuth()
+  const router = useRouter()
   const supabase = createSupabaseBrowserClient()
   
   const [archivedNotes, setArchivedNotes] = useState<NoteWithTags[]>([])
@@ -18,6 +20,14 @@ export default function ArchivePage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  useEffect(() => {
+    const handleNoteChange = () => {
+      loadArchivedNotes()
+    }
+    window.addEventListener('note-archived', handleNoteChange)
+    return () => window.removeEventListener('note-archived', handleNoteChange)
+  }, [])
 
   const loadArchivedNotes = async () => {
     const { data } = await supabase
@@ -30,19 +40,24 @@ export default function ArchivePage() {
   }
 
   const unarchiveNote = async (noteId: string) => {
-    await supabase
+    const { error } = await supabase
       .from('notes')
-      .update({ is_archived: false })
+      .update({ is_archived: false, folder_id: null })
       .eq('id', noteId)
     
-    loadArchivedNotes()
+    if (!error) {
+      setArchivedNotes(prev => prev.filter(n => n.id !== noteId))
+      window.dispatchEvent(new Event('note-archived'))
+    }
   }
 
   const permanentlyDelete = async (noteId: string) => {
     if (!confirm('Are you sure you want to permanently delete this note? This cannot be undone.')) return
     
-    await supabase.from('notes').delete().eq('id', noteId)
-    loadArchivedNotes()
+    const { error } = await supabase.from('notes').delete().eq('id', noteId)
+    if (!error) {
+      setArchivedNotes(prev => prev.filter(n => n.id !== noteId))
+    }
   }
 
   return (

@@ -48,6 +48,10 @@ export function truncate(text: string, maxLength: number): string {
   return text.slice(0, maxLength - 3) + '...'
 }
 
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
+}
+
 export function getRandomColor(): string {
   const colors = [
     '#EF4444', '#F97316', '#F59E0B', '#84CC16',

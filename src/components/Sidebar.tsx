@@ -4,19 +4,380 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Plus, Folder, FileText, Search,
+  Folder, FileText, Search,
   Sun, Moon, LogOut, Tag, Archive,
-  ChevronRight, ChevronDown, FolderPlus, Shield, Share2,
-  Trash2, X
+  ChevronRight, ChevronDown, Shield, Share2,
+  Trash2, X, MoreHorizontal, Pin, Edit2, Move
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import type { Folder as FolderType, NoteWithTags } from '@/types'
+import type { Folder as FolderType, NoteWithTags, FolderWithNotes } from '@/types'
 
 interface SidebarProps {
   className?: string
+}
+
+function buildFolderTree(
+  folders: FolderType[],
+  notes: NoteWithTags[]
+): FolderWithNotes[] {
+  const folderMap = new Map<string, FolderWithNotes>()
+  
+  folders.forEach(f => {
+    folderMap.set(f.id, { ...f, notes: [], subfolders: [] })
+  })
+  
+  const rootFolders: FolderWithNotes[] = []
+  
+  folders.forEach(f => {
+    const folder = folderMap.get(f.id)!
+    folder.notes = notes.filter(n => n.folder_id === f.id)
+    
+    if (f.parent_id && folderMap.has(f.parent_id)) {
+      folderMap.get(f.parent_id)!.subfolders.push(folder)
+    } else {
+      rootFolders.push(folder)
+    }
+  })
+  
+  return rootFolders.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function NoteItem({ 
+  note, 
+  pathname,
+  onMenuOpen,
+  menuOpen,
+  moveOpenId,
+  setMoveOpen,
+  folders,
+  moveNote,
+  archiveNote,
+  deleteNote,
+  togglePinNote,
+  startRename,
+  renameOpen,
+  renameValue,
+  setRenameValue,
+  renameItem
+}: {
+  note: NoteWithTags
+  pathname: string
+  onMenuOpen: (id: string | null) => void
+  menuOpen: string | null
+  moveOpenId: string | null
+  setMoveOpen: (id: string | null) => void
+  folders: FolderType[]
+  moveNote: (noteId: string, folderId: string | null) => void
+  archiveNote: (noteId: string) => void
+  deleteNote: (noteId: string) => void
+  togglePinNote: (noteId: string, isPinned: boolean) => void
+  startRename: (type: 'note' | 'folder', id: string, name: string) => void
+  renameOpen: {type: 'note' | 'folder', id: string} | null
+  renameValue: string
+  setRenameValue: (v: string) => void
+  renameItem: (type: 'note' | 'folder', id: string, name: string) => void
+}) {
+  const isMenuOpen = menuOpen === note.id
+  const isMoveOpen = moveOpenId === note.id
+  const isRenaming = renameOpen?.type === 'note' && renameOpen?.id === note.id
+
+  return (
+    <div className="group relative flex items-center">
+      {isRenaming ? (
+        <input
+          type="text"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') renameItem('note', note.id, renameValue)
+            if (e.key === 'Escape') { setRenameValue(''); startRename('note', note.id, '') }
+          }}
+          onBlur={() => renameItem('note', note.id, renameValue)}
+          className="flex-1 px-2 py-1 text-sm bg-[var(--input-bg)] border border-[var(--accent)] rounded text-[var(--foreground)]"
+          autoFocus
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <Link
+          href={`/app/note/${note.id}`}
+          className={cn(
+            "flex-1 flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
+            pathname === `/app/note/${note.id}` ? "bg-[var(--accent-light)] text-[var(--accent)]" : "text-[var(--foreground)]"
+          )}
+        >
+          <FileText size={14} />
+          <span className="truncate">{note.title}</span>
+          {note.is_pinned && <Pin size={12} className="text-[var(--accent)]" />}
+        </Link>
+      )}
+      <button
+        onClick={() => onMenuOpen(isMenuOpen ? null : note.id)}
+        className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--hover-bg)] text-[var(--muted)]"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      
+      {isMenuOpen && (
+        <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
+          <button
+            onClick={() => startRename('note', note.id, note.title)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+          >
+            <Edit2 size={14} /> Rename
+          </button>
+          <button
+            onClick={() => { onMenuOpen(null); setMoveOpen(note.id); }}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+          >
+            <Move size={14} /> Move
+          </button>
+          <button
+            onClick={() => togglePinNote(note.id, note.is_pinned || false)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+          >
+            <Pin size={14} /> {note.is_pinned ? 'Unpin' : 'Pin'}
+          </button>
+          <button
+            onClick={() => archiveNote(note.id)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+          >
+            <Archive size={14} /> Archive
+          </button>
+          <button
+            onClick={() => deleteNote(note.id)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2 text-red-500"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      )}
+
+      {isMoveOpen && (
+        <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
+          <div className="text-xs text-[var(--muted)] px-3 py-2 border-b border-[var(--border-color)]">Move to</div>
+          <button
+            onClick={() => moveNote(note.id, null)}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] ${note.folder_id === null ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
+          >
+            No folder
+          </button>
+          {folders.map(folder => (
+            <button
+              key={folder.id}
+              onClick={() => moveNote(note.id, folder.id)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2 ${note.folder_id === folder.id ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
+            >
+              <Folder size={14} className="text-yellow-500" />
+              {folder.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FolderItem({ 
+  folder, 
+  depth = 0,
+  expandedFolders,
+  toggleFolder,
+  deletingFolder,
+  deleteFolder,
+  pathname,
+  router,
+  folders,
+  onMenuOpen,
+  menuOpen,
+  moveOpenId,
+  setMoveOpen,
+  moveFolder,
+  startRename,
+  moveNote,
+  archiveNote,
+  deleteNote,
+  togglePinNote,
+  renameOpen,
+  renameValue,
+  setRenameValue,
+  renameItem
+}: {
+  folder: FolderWithNotes
+  depth?: number
+  expandedFolders: Set<string>
+  toggleFolder: (id: string) => void
+  deletingFolder: string | null
+  deleteFolder: (id: string) => void
+  pathname: string
+  router: ReturnType<typeof useRouter>
+  folders: FolderType[]
+  onMenuOpen: (id: string | null) => void
+  menuOpen: string | null
+  moveOpenId: string | null
+  setMoveOpen: (id: string | null) => void
+  moveFolder: (folderId: string, parentId: string | null) => void
+  startRename: (type: 'note' | 'folder', id: string, name: string) => void
+  moveNote: (noteId: string, folderId: string | null) => void
+  archiveNote: (noteId: string) => void
+  deleteNote: (noteId: string) => void
+  togglePinNote: (noteId: string, isPinned: boolean) => void
+  renameOpen: {type: 'note' | 'folder', id: string} | null
+  renameValue: string
+  setRenameValue: (v: string) => void
+  renameItem: (type: 'note' | 'folder', id: string, name: string) => void
+}) {
+  const isExpanded = expandedFolders.has(folder.id)
+  const hasContent = folder.notes.length > 0 || folder.subfolders.length > 0
+  
+  const isMenuOpen = menuOpen === folder.id
+  const otherFolders = folders.filter(f => f.id !== folder.id)
+  const isRenaming = renameOpen?.type === 'folder' && renameOpen?.id === folder.id
+
+  return (
+    <div style={{ marginLeft: depth * 16 }} className="relative">
+      <div className="group flex items-center">
+        {isRenaming ? (
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') renameItem('folder', folder.id, renameValue)
+              if (e.key === 'Escape') { setRenameValue(''); startRename('folder', folder.id, '') }
+            }}
+            onBlur={() => renameItem('folder', folder.id, renameValue)}
+            className="flex-1 px-2 py-1 text-sm bg-[var(--input-bg)] border border-[var(--accent)] rounded text-[var(--foreground)]"
+            autoFocus
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <button
+            onClick={() => toggleFolder(folder.id)}
+            className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
+          >
+            {hasContent ? (
+              isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+            ) : (
+              <span className="w-3.5" />
+            )}
+            <Folder size={16} className="text-yellow-500" />
+            <span className="truncate">{folder.name}</span>
+          </button>
+        )}
+        <button
+          onClick={() => onMenuOpen(isMenuOpen ? null : folder.id)}
+          className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--hover-bg)] text-[var(--muted)]"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        
+        {isMenuOpen && (
+          <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-32">
+            <button
+              onClick={() => startRename('folder', folder.id, folder.name)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+            >
+              <Edit2 size={14} /> Rename
+            </button>
+            <button
+              onClick={() => { onMenuOpen(null); setMoveOpen(folder.id); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2"
+            >
+              <Move size={14} /> Move
+            </button>
+            <button
+              onClick={() => deleteFolder(folder.id)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2 text-red-500"
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          </div>
+        )}
+
+        {moveOpenId === folder.id && (
+          <div className="absolute right-0 top-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-md shadow-lg z-20 min-w-40">
+            <div className="text-xs text-[var(--muted)] px-3 py-2 border-b border-[var(--border-color)]">Move to</div>
+            <button
+              onClick={() => moveFolder(folder.id, null)}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] ${folder.parent_id === null ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
+            >
+              Root
+            </button>
+            {otherFolders.map(f => (
+              <button
+                key={f.id}
+                onClick={() => moveFolder(folder.id, f.id)}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--hover-bg)] flex items-center gap-2 ${folder.parent_id === f.id ? 'bg-[var(--hover-bg)] font-medium' : ''}`}
+              >
+                <Folder size={14} className="text-yellow-500" />
+                {f.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {isExpanded && (
+        <div>
+          {folder.subfolders.map(subfolder => (
+            <FolderItem
+              key={subfolder.id}
+              folder={subfolder}
+              depth={depth + 1}
+              expandedFolders={expandedFolders}
+              toggleFolder={toggleFolder}
+              deletingFolder={deletingFolder}
+              deleteFolder={deleteFolder}
+              pathname={pathname}
+              router={router}
+              folders={folders}
+              onMenuOpen={onMenuOpen}
+              menuOpen={menuOpen}
+              moveOpenId={moveOpenId}
+              setMoveOpen={setMoveOpen}
+              moveFolder={moveFolder}
+              startRename={startRename}
+              moveNote={moveNote}
+              archiveNote={archiveNote}
+              deleteNote={deleteNote}
+              togglePinNote={togglePinNote}
+              renameOpen={renameOpen}
+              renameValue={renameValue}
+              setRenameValue={setRenameValue}
+              renameItem={renameItem}
+            />
+          ))}
+          
+          {folder.notes.map(note => (
+            <div key={note.id} style={{ marginLeft: (depth + 1) * 16 }}>
+              <NoteItem
+                note={note}
+                pathname={pathname}
+                onMenuOpen={onMenuOpen}
+                menuOpen={menuOpen}
+                moveOpenId={moveOpenId}
+                setMoveOpen={setMoveOpen}
+                folders={folders}
+                moveNote={moveNote}
+                archiveNote={archiveNote}
+                deleteNote={deleteNote}
+                togglePinNote={togglePinNote}
+                startRename={startRename}
+                renameOpen={renameOpen}
+                renameValue={renameValue}
+                setRenameValue={setRenameValue}
+                renameItem={renameItem}
+              />
+            </div>
+          ))}
+          
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function Sidebar({ className }: SidebarProps) {
@@ -29,12 +390,19 @@ export function Sidebar({ className }: SidebarProps) {
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [deletingFolder, setDeletingFolder] = useState<string | null>(null)
+  const [noteMenuOpen, setNoteMenuOpen] = useState<string | null>(null)
+  const [noteMoveOpen, setNoteMoveOpen] = useState<string | null>(null)
+  const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null)
+  const [folderMoveOpen, setFolderMoveOpen] = useState<string | null>(null)
+  const [renameOpen, setRenameOpen] = useState<{type: 'note' | 'folder', id: string} | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   const { user, signOut } = useAuth()
   const { resolvedTheme, toggleTheme } = useTheme()
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createSupabaseBrowserClient()
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (user) {
@@ -43,11 +411,23 @@ export function Sidebar({ className }: SidebarProps) {
       loadSharedNotes()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, refreshKey])
+
+  useEffect(() => {
+    const handleNoteChange = () => {
+      loadNotes()
+      loadFolders()
+    }
+    window.addEventListener('note-archived', handleNoteChange)
+    return () => window.removeEventListener('note-archived', handleNoteChange)
+  }, [])
 
   useEffect(() => {
     if (searchQuery.length > 0) {
-      searchNotes()
+      const timer = setTimeout(() => {
+        searchNotes()
+      }, 300)
+      return () => clearTimeout(timer)
     } else {
       setSearchResults([])
     }
@@ -70,6 +450,104 @@ export function Sidebar({ className }: SidebarProps) {
       .order('updated_at', { ascending: false })
       .limit(50)
     if (data) setNotes(data as NoteWithTags[])
+
+    if (data && user) {
+      const welcomeNote = data.find(n => n.title === 'Welcome to Bexiter')
+      
+      if (welcomeNote) {
+        localStorage.setItem('welcome-shown', 'true')
+        localStorage.removeItem('welcome-creating')
+        return
+      }
+      
+      if (data.length > 0) {
+        localStorage.setItem('welcome-shown', 'true')
+        localStorage.removeItem('welcome-creating')
+        return
+      }
+      
+      const welcomeShown = localStorage.getItem('welcome-shown')
+      if (welcomeShown === 'true') {
+        return
+      }
+      
+      const alreadyCreating = localStorage.getItem('welcome-creating')
+      if (alreadyCreating === 'true') {
+        localStorage.removeItem('welcome-creating')
+        return
+      }
+      
+      localStorage.setItem('welcome-creating', 'true')
+      console.log('Creating welcome note for user:', user.id)
+      const welcomeContent = `<h1>Welcome to Bexiter 👋</h1>
+<p>This is your first note. Here's what you can do:</p>
+
+<h2>📝 Writing</h2>
+<p><strong>Bold text</strong>, <em>italic text</em>, and <u>underlined text</u> work just like in any editor.</p>
+
+<h3>Lists</h3>
+<ul>
+  <li>Bullet point one</li>
+  <li>Bullet point two</li>
+</ul>
+
+<ol>
+  <li>Number one</li>
+  <li>Number two</li>
+</ol>
+
+<h2>🔗 Links</h2>
+<p>Create links to <strong>other notes</strong> or external websites like <a href="https://google.com">Google</a>.</p>
+
+<h2>📋 Quote</h2>
+<blockquote>Here's a quote. Use it for important notes.</blockquote>
+
+<h2>💻 Code</h2>
+<p>Use <code>inline code</code> or code blocks:</p>
+<pre><code>const hello = "world";
+console.log(hello);</code></pre>
+
+<hr>
+
+<h2>📤 Export &amp; Import</h2>
+<p><strong>Export:</strong> Click the Download icon to export as HTML or Markdown (.md).</p>
+<p><strong>Import:</strong> Copy text from anywhere (Google Docs, Word, Notion) and paste it here. It will be converted automatically.</p>
+
+<h2>⌨️ Shortcuts</h2>
+<ul>
+  <li><code>Cmd/Ctrl + B</code> - Bold</li>
+  <li><code>Cmd/Ctrl + I</code> - Italic</li>
+  <li><code>Cmd/Ctrl + U</code> - Underline</li>
+  <li><code>Cmd/Ctrl + K</code> - Add link</li>
+</ul>
+
+<h2>📁 Organize</h2>
+<ul>
+  <li>Create folders to organize your notes</li>
+  <li>Pin important notes to Favorites</li>
+  <li>Use tags for even more organization</li>
+  <li>Archive notes you don't need daily</li>
+</ul>
+
+<p><em>Delete this note when you're ready to start creating your own!</em></p>`
+
+      const { data: newNote } = await supabase
+        .from('notes')
+        .insert({
+          user_id: user.id,
+          title: 'Welcome to Bexiter',
+          content: welcomeContent,
+          folder_id: null,
+          is_archived: false
+        })
+        .select('*, tags(*), folder:folders(*)')
+        .single()
+      
+      if (newNote) {
+        setNotes([newNote as NoteWithTags])
+        localStorage.setItem('welcome-creating', 'false')
+      }
+    }
   }
 
   const loadSharedNotes = async () => {
@@ -92,13 +570,17 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   const searchNotes = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notes')
       .select('*, tags(*), folder:folders(*)')
       .or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`)
       .eq('is_archived', false)
       .order('updated_at', { ascending: false })
       .limit(20)
+    if (error) {
+      console.error('Search failed:', error)
+      return
+    }
     if (data) setSearchResults(data as NoteWithTags[])
   }
 
@@ -139,9 +621,100 @@ export function Sidebar({ className }: SidebarProps) {
     if (!confirm(`Delete folder "${folder.name}"? Notes inside will be moved out.`)) return
 
     setDeletingFolder(folderId)
-    await supabase.from('folders').delete().eq('id', folderId)
+    const { error } = await supabase.from('folders').delete().eq('id', folderId)
+    if (error) {
+      console.error('Failed to delete folder:', error)
+      alert('Failed to delete folder. Please try again.')
+      setDeletingFolder(null)
+      return
+    }
     setFolders(prev => prev.filter(f => f.id !== folderId))
+    setFolderMenuOpen(null)
     setDeletingFolder(null)
+  }
+
+  const moveNote = async (noteId: string, folderId: string | null) => {
+    const { error } = await supabase.from('notes').update({ folder_id: folderId }).eq('id', noteId)
+    if (error) {
+      console.error('Failed to move note:', error)
+      return
+    }
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, folder_id: folderId } : n))
+    setNoteMoveOpen(null)
+    setNoteMenuOpen(null)
+  }
+
+  const moveFolder = async (folderId: string, parentId: string | null) => {
+    const { error } = await supabase.from('folders').update({ parent_id: parentId }).eq('id', folderId)
+    if (error) {
+      console.error('Failed to move folder:', error)
+      return
+    }
+    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, parent_id: parentId } : f))
+    await loadFolders()
+    setFolderMoveOpen(null)
+    setFolderMenuOpen(null)
+  }
+
+  const archiveNote = async (noteId: string) => {
+    const { error } = await supabase.from('notes').update({ is_archived: true }).eq('id', noteId)
+    if (error) {
+      console.error('Failed to archive note:', error)
+      return
+    }
+    setNotes(prev => prev.filter(n => n.id !== noteId))
+    setNoteMenuOpen(null)
+    window.dispatchEvent(new Event('note-archived'))
+  }
+
+  const deleteNote = async (noteId: string) => {
+    if (!confirm('Delete this note?')) return
+    const { error } = await supabase.from('notes').delete().eq('id', noteId)
+    if (error) {
+      console.error('Failed to delete note:', error)
+      alert('Failed to delete note. Please try again.')
+      return
+    }
+    setNotes(prev => prev.filter(n => n.id !== noteId))
+    setNoteMenuOpen(null)
+  }
+
+  const togglePinNote = async (noteId: string, isPinned: boolean) => {
+    const { error } = await supabase.from('notes').update({ is_pinned: !isPinned }).eq('id', noteId)
+    if (error) {
+      console.error('Failed to toggle pin:', error)
+      return
+    }
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, is_pinned: !isPinned } : n))
+    setNoteMenuOpen(null)
+  }
+
+  const renameItem = async (type: 'note' | 'folder', id: string, newName: string) => {
+    if (!newName.trim()) return
+    if (type === 'note') {
+      const { error } = await supabase.from('notes').update({ title: newName.trim() }).eq('id', id)
+      if (error) {
+        console.error('Failed to rename note:', error)
+        return
+      }
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, title: newName.trim() } : n))
+    } else {
+      const { error } = await supabase.from('folders').update({ name: newName.trim() }).eq('id', id)
+      if (error) {
+        console.error('Failed to rename folder:', error)
+        return
+      }
+      setFolders(prev => prev.map(f => f.id === id ? { ...f, name: newName.trim() } : f))
+    }
+    setRenameOpen(null)
+    setRenameValue('')
+  }
+
+  const startRename = (type: 'note' | 'folder', id: string, currentName: string) => {
+    setRenameOpen({ type, id })
+    setRenameValue(currentName)
+    setNoteMenuOpen(null)
+    setFolderMenuOpen(null)
   }
 
   const handleSignOut = async () => {
@@ -194,17 +767,15 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="p-3 border-b border-[var(--border-color)] flex gap-2">
         <button
           onClick={() => router.push('/app/note/new')}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-[var(--accent)] text-white rounded-md hover:bg-[var(--accent-hover)] flex-1"
+          className="flex-1 px-3 py-2 text-sm bg-[var(--accent)] text-white rounded-md hover:bg-[var(--accent-hover)]"
         >
-          <Plus size={16} />
           New Note
         </button>
         <button
           onClick={() => setShowNewFolder(true)}
-          className="p-2 text-[var(--muted)] hover:bg-[var(--hover-bg)] rounded-md"
-          title="New Folder"
+          className="flex-1 px-3 py-2 text-sm bg-[var(--accent)] text-white rounded-md hover:bg-[var(--accent-hover)]"
         >
-          <FolderPlus size={18} />
+          New Folder
         </button>
       </div>
 
@@ -242,98 +813,149 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
-        {/* Folders */}
-        <div className="mb-4">
-          <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2">
-            Folders
-          </div>
-          {folders.length === 0 && (
-            <div className="text-xs text-[var(--muted)] px-3 py-2">
-              No folders yet
+        {searchQuery.length > 0 ? (
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2">
+              Search Results
             </div>
-          )}
-          {folders.map(folder => (
-            <div key={folder.id}>
-              <div className="group flex items-center">
-                <button
-                  onClick={() => toggleFolder(folder.id)}
-                  className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-md"
-                >
-                  {expandedFolders.has(folder.id) ? (
-                    <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                  <Folder size={16} className="text-[var(--accent)]" />
-                  <span className="truncate">{folder.name}</span>
-                </button>
-                <button
-                  onClick={() => deleteFolder(folder.id)}
-                  disabled={deletingFolder === folder.id}
-                  className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--hover-bg)] text-[var(--muted)] hover:text-[var(--danger)] transition-opacity"
-                  title="Delete folder"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              {expandedFolders.has(folder.id) && (
-                <div className="ml-6">
-                  {notes
-                    .filter(n => n.folder_id === folder.id)
-                    .map(note => (
-                      <Link
-                        key={note.id}
-                        href={`/app/note/${note.id}`}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
-                          pathname === `/app/note/${note.id}`
-                            ? "bg-[var(--accent-light)] text-[var(--accent)]"
-                            : "text-[var(--foreground)]"
-                        )}
-                      >
-                        <FileText size={14} />
-                        <span className="truncate">{note.title}</span>
-                      </Link>
-                    ))}
-                  <button
-                    onClick={() => router.push(`/app/note/new?folder_id=${folder.id}`)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--muted)] hover:bg-[var(--hover-bg)] rounded-md w-full"
-                  >
-                    <Plus size={14} />
-                    <span>New note in {folder.name}</span>
-                  </button>
+            {displayedNotes.length === 0 ? (
+              <div className="text-xs text-[var(--muted)] px-3 py-2">No results found</div>
+            ) : (
+              displayedNotes.map(note => (
+                <div key={note.id} className="px-3">
+                  <NoteItem
+                    note={note}
+                    pathname={pathname}
+                    onMenuOpen={setNoteMenuOpen}
+                    menuOpen={noteMenuOpen}
+                    moveOpenId={noteMoveOpen}
+                    setMoveOpen={setNoteMoveOpen}
+                    folders={folders}
+                    moveNote={moveNote}
+                    archiveNote={archiveNote}
+                    deleteNote={deleteNote}
+                    togglePinNote={togglePinNote}
+                    startRename={startRename}
+                    renameOpen={renameOpen}
+                    renameValue={renameValue}
+                    setRenameValue={setRenameValue}
+                    renameItem={renameItem}
+                  />
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* All Notes */}
-        <div className="mb-4">
-          <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2">
-            {searchQuery.length > 0 ? 'Search Results' : 'All Notes'}
+              ))
+            )}
           </div>
-          {displayedNotes.length === 0 && (
-            <div className="text-xs text-[var(--muted)] px-3 py-2">
-              {searchQuery.length > 0 ? 'No results found' : 'No notes yet'}
-            </div>
-          )}
-          {displayedNotes.map(note => (
-            <Link
-              key={note.id}
-              href={`/app/note/${note.id}`}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--hover-bg)] rounded-md",
-                pathname === `/app/note/${note.id}`
-                  ? "bg-[var(--accent-light)] text-[var(--accent)]"
-                  : "text-[var(--foreground)]"
-              )}
-            >
-              <FileText size={14} />
-              <span className="truncate">{note.title || 'Untitled'}</span>
-            </Link>
-          ))}
-        </div>
+        ) : (
+          <>
+            {(() => {
+              const folderTree = buildFolderTree(folders, notes)
+              const unfiledNotes = notes.filter(n => n.folder_id === null)
+              
+              return (
+                <>
+                  {(() => {
+                    const pinnedNotes = notes.filter(n => n.is_pinned)
+                    const folderTree = buildFolderTree(folders, notes)
+                    const unfiledNotes = notes.filter(n => n.folder_id === null && !n.is_pinned)
+                    
+                    return (
+                      <>
+                        {pinnedNotes.length > 0 && (
+                          <div className="mb-4">
+                            <div className="text-xs font-semibold text-[var(--muted)] uppercase px-3 py-2 flex items-center gap-2">
+                              <Pin size={12} /> Favorites
+                            </div>
+                            {pinnedNotes.map(note => (
+                              <div key={note.id} className="px-3">
+                                <NoteItem
+                                  note={note}
+                                  pathname={pathname}
+                                  onMenuOpen={setNoteMenuOpen}
+                                  menuOpen={noteMenuOpen}
+                                  moveOpenId={noteMoveOpen}
+                                  setMoveOpen={setNoteMoveOpen}
+                                  folders={folders}
+                                  moveNote={moveNote}
+                                  archiveNote={archiveNote}
+                                  deleteNote={deleteNote}
+                                  togglePinNote={togglePinNote}
+                                  startRename={startRename}
+                                  renameOpen={renameOpen}
+                                  renameValue={renameValue}
+                                  setRenameValue={setRenameValue}
+                                  renameItem={renameItem}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {folderTree.length === 0 && unfiledNotes.length === 0 && pinnedNotes.length === 0 && (
+                          <div className="text-xs text-[var(--muted)] px-3 py-2">No notes yet</div>
+                        )}
+                        
+                        {folderTree.map(folder => (
+                          <FolderItem
+                            key={folder.id}
+                            folder={folder}
+                            expandedFolders={expandedFolders}
+                            toggleFolder={toggleFolder}
+                            deletingFolder={deletingFolder}
+                            deleteFolder={deleteFolder}
+                            pathname={pathname}
+                            router={router}
+                            folders={folders}
+                            onMenuOpen={setFolderMenuOpen}
+                            menuOpen={folderMenuOpen}
+                            moveOpenId={folderMoveOpen}
+                            setMoveOpen={setFolderMoveOpen}
+                            moveFolder={moveFolder}
+                            startRename={startRename}
+                            moveNote={moveNote}
+                            archiveNote={archiveNote}
+                            deleteNote={deleteNote}
+                            togglePinNote={togglePinNote}
+                            renameOpen={renameOpen}
+                            renameValue={renameValue}
+                            setRenameValue={setRenameValue}
+                            renameItem={renameItem}
+                          />
+                        ))}
+                        
+                        {unfiledNotes.length > 0 && (
+                          <div className="mt-2">
+                            {unfiledNotes.map(note => (
+                              <div key={note.id} className="px-3">
+                                <NoteItem
+                                  note={note}
+                                  pathname={pathname}
+                                  onMenuOpen={setNoteMenuOpen}
+                                  menuOpen={noteMenuOpen}
+                                  moveOpenId={noteMoveOpen}
+                                  setMoveOpen={setNoteMoveOpen}
+                                  folders={folders}
+                                  moveNote={moveNote}
+                                  archiveNote={archiveNote}
+                                  deleteNote={deleteNote}
+                                  togglePinNote={togglePinNote}
+                                  startRename={startRename}
+                                  renameOpen={renameOpen}
+                                  renameValue={renameValue}
+                                  setRenameValue={setRenameValue}
+                                  renameItem={renameItem}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+                </>
+              )
+            })()}
+          </>
+        )}
 
         {/* Shared Notes */}
         {sharedNotes.length > 0 && (

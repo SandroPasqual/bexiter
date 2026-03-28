@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { FileText, FolderOpen, Tag, Plus } from 'lucide-react'
+import { stripHtml } from '@/lib/utils'
 import type { NoteWithTags } from '@/types'
 
 export default function AppPage() {
@@ -127,7 +128,7 @@ export default function AppPage() {
                     {note.title || 'Untitled'}
                   </div>
                   <div className="text-sm text-[var(--muted)] mt-1">
-                    {note.content?.substring(0, 100)}...
+                    {stripHtml(note.content || '').substring(0, 100)}...
                   </div>
                 </button>
               ))}

@@ -69,6 +69,15 @@ async function stats() {
   console.log(`Users:   ${users.data?.users.length || 0}\n`)
 }
 
+async function runSql(sql: string) {
+  const { error } = await admin.rpc('exec_sql', { sql_text: sql })
+  if (error) {
+    console.error('Error:', error.message)
+    return
+  }
+  console.log('Done:', sql.substring(0, 50) + '...')
+}
+
 async function main() {
   switch (command) {
     case 'list-users':
