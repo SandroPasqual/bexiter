@@ -31,6 +31,7 @@ CREATE TABLE public.notes (
   content TEXT DEFAULT '',
   folder_id UUID REFERENCES public.folders(id) ON DELETE SET NULL,
   is_archived BOOLEAN DEFAULT FALSE,
+  is_pinned BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -198,3 +199,14 @@ CREATE POLICY "Collaborators can view note_tags" ON public.note_tags
       WHERE note_id = note_tags.note_id AND user_id = auth.uid()
     )
   );
+
+-- =============================================
+-- V2.3: Pin/Favorites Feature
+-- Run this section if upgrading from v2.2 or earlier
+-- =============================================
+
+-- 15. Add is_pinned column to notes
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+
+-- 16. Index for pinned notes
+CREATE INDEX IF NOT EXISTS idx_notes_is_pinned ON public.notes(user_id, is_pinned) WHERE is_pinned = TRUE;

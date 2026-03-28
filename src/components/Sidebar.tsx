@@ -689,9 +689,11 @@ console.log(hello);</code></pre>
   }
 
   const togglePinNote = async (noteId: string, isPinned: boolean) => {
+    console.log('Toggle pin:', noteId, 'current:', isPinned, 'new:', !isPinned)
     const { error } = await supabase.from('notes').update({ is_pinned: !isPinned }).eq('id', noteId)
     if (error) {
       console.error('Failed to toggle pin:', error)
+      alert('Failed to pin note: ' + error.message)
       return
     }
     setNotes(prev => prev.map(n => n.id === noteId ? { ...n, is_pinned: !isPinned } : n))
